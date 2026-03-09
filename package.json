@@ -1,16 +1,13 @@
 {
-  "name": "iobroker.poolpilot",
+  "name": "iobroker.poolsteuerung",
   "version": "0.0.1",
-  "description": "Starter adapter for saltwater pool automation in ioBroker",
-  "author": "OpenAI for Thomas Radebold",
+  "description": "Saltwater pool automation (pH dosing, chlorinator, pump, heatpump)",
+  "author": "Thomas Radebold",
   "license": "MIT",
   "main": "main.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/radebold/iobroker.poolpilot"
-  },
-  "engines": {
-    "node": ">=18"
+    "url": "https://github.com/radebold/ioBroker.PoolSteuerung"
   },
   "dependencies": {
     "@iobroker/adapter-core": "^3.2.3"
