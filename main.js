@@ -17,7 +17,7 @@ class Poolsteuerung extends utils.Adapter {
     async onReady() {
         this.log.info('poolsteuerung adapter started');
         await this.setStateAsync('info.connection', true, true);
-        await this.setStateAsync('status.overall.message', 'Adapter gestartet - Admin-Konfiguration erweitert', true);
+        await this.setStateAsync('status.overall.message', 'Adapter gestartet - Standardwerte aus vorhandenen Skripten geladen', true);
     }
 
     async onUnload(callback) {

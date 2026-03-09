@@ -40,6 +40,10 @@
         "globalEnableStateId": {
           "type": "text",
           "label": "Optionale allgemeine Freigabe State-ID"
+        },
+        "phDoseEnableStateId": {
+          "type": "text",
+          "label": "Freigabe-State-ID pH-Dosierung"
         }
       }
     },
@@ -147,7 +151,7 @@
         },
         "phDoseTimes": {
           "type": "text",
-          "label": "Automatische Prüfzeiten (z. B. 09:00,12:00,15:00)"
+          "label": "Automatische Prüfzeiten"
         },
         "phGranulateFactorPercent": {
           "type": "number",
@@ -200,6 +204,10 @@
         "chlorinatorAutoEnabled": {
           "type": "checkbox",
           "label": "ORP-Automatik aktiv"
+        },
+        "chlorinatorStopTime": {
+          "type": "text",
+          "label": "Optionale Abschaltzeit (HH:MM)"
         }
       }
     },
