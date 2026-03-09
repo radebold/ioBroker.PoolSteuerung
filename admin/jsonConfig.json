@@ -1,9 +1,28 @@
 {
-  "type": "panel",
+  "i18n": true,
+  "type": "tabs",
   "items": {
-    "info": {
-      "type": "staticText",
-      "text": "Poolsteuerung Adapter Konfiguration"
+    "mainTab": {
+      "type": "panel",
+      "label": "Main settings",
+      "items": {
+        "phDoseEnabled": {
+          "type": "checkbox",
+          "label": "Enable pH dosing"
+        },
+        "chlorinatorEnabled": {
+          "type": "checkbox",
+          "label": "Enable chlorinator control"
+        },
+        "pumpEnabled": {
+          "type": "checkbox",
+          "label": "Enable circulation pump control"
+        },
+        "heatpumpEnabled": {
+          "type": "checkbox",
+          "label": "Enable heat pump control"
+        }
+      }
     }
   }
 }
