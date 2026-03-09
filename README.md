@@ -1,11 +1,11 @@
 
-# ioBroker.poolsteuerung
+# iobroker.poolsteuerung
 
 Adapter zur Steuerung eines Salzwasserpools.
 
 ## Funktionen
 
-- pH-Minus Dosierpumpensteuerung
+- pH-Minus Dosierpumpe
 - Chlorinatorsteuerung
 - Umwälzpumpe
-- Wärmepumpe über Tuya
+- Wärmepumpe (z.B. Tuya)

@@ -2,13 +2,13 @@
   "common": {
     "name": "poolsteuerung",
     "version": "0.0.1",
-    "title": "PoolSteuerung",
+    "title": "Poolsteuerung",
     "titleLang": {
-      "en": "PoolSteuerung",
-      "de": "PoolSteuerung"
+      "en": "Poolsteuerung",
+      "de": "Poolsteuerung"
     },
     "desc": {
-      "en": "Saltwater pool automation adapter",
+      "en": "Saltwater pool control adapter",
       "de": "Adapter zur Steuerung eines Salzwasserpools"
     },
     "authors": [
@@ -22,12 +22,9 @@
     "compact": true,
     "connectionType": "local",
     "dataSource": "poll",
-    "materialize": true,
-    "materializeTab": true,
     "adminUI": {
       "config": "json"
     },
-    "messagebox": true,
     "loglevel": "info",
     "type": "hardware"
   },

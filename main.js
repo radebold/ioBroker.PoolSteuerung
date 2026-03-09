@@ -16,7 +16,7 @@ class Poolsteuerung extends utils.Adapter {
     }
 
     async onReady() {
-        this.log.info('Poolsteuerung adapter started');
+        this.log.info('poolsteuerung adapter started');
         await this.setStateAsync('info.connection', true, true);
     }
 
