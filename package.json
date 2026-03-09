@@ -1,7 +1,7 @@
 {
   "name": "iobroker.poolsteuerung",
   "version": "0.0.1",
-  "description": "ioBroker adapter for saltwater pool control",
+  "description": "ioBroker adapter for saltwater pool automation",
   "main": "main.js",
   "author": "Thomas Radebold",
   "license": "MIT",
@@ -12,12 +12,15 @@
   "keywords": [
     "iobroker",
     "pool",
-    "salzwasser",
+    "saltwater",
     "chlorinator",
     "ph",
     "heatpump"
   ],
   "dependencies": {
     "@iobroker/adapter-core": "^3.2.3"
+  },
+  "scripts": {
+    "install": "node node_modules/iobroker.js-controller/iobroker.js install poolsteuerung"
   }
 }

@@ -3,7 +3,7 @@
   "items": {
     "phEnabled": {
       "type": "checkbox",
-      "label": "pH Dosierung aktiv"
+      "label": "pH Steuerung aktiv"
     },
     "chlorinatorEnabled": {
       "type": "checkbox",

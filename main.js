@@ -3,6 +3,7 @@
 const utils = require('@iobroker/adapter-core');
 
 class Poolsteuerung extends utils.Adapter {
+
     constructor(options) {
         super({
             ...options,
@@ -16,12 +17,12 @@ class Poolsteuerung extends utils.Adapter {
 
     async onReady() {
         this.log.info('Poolsteuerung adapter started');
-        await this.setState('info.connection', true, true);
+        await this.setStateAsync('info.connection', true, true);
     }
 
-    onUnload(callback) {
+    async onUnload(callback) {
         try {
-            this.setState('info.connection', false, true);
+            await this.setStateAsync('info.connection', false, true);
             callback();
         } catch (e) {
             callback();
@@ -29,8 +30,9 @@ class Poolsteuerung extends utils.Adapter {
     }
 
     onStateChange(id, state) {
-        if (state && !state.ack) {
-            this.log.debug(`State changed: ${id} = ${state.val}`);
+        if (!state) return;
+        if (!state.ack) {
+            this.log.debug(`stateChange ${id}: ${state.val}`);
         }
     }
 }
