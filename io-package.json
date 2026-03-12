@@ -1,7 +1,7 @@
 {
   "common": {
     "name": "poolsteuerung",
-    "version": "0.0.2",
+    "version": "0.0.2-beta1",
     "title": "Poolsteuerung",
     "titleLang": {
       "en": "Poolsteuerung",
@@ -104,5 +104,5 @@
       "native": {}
     }
   ],
-  "version": "0.0.2"
+  "version": "0.0.2-beta1"
 }

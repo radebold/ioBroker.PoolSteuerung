@@ -1,8 +1,9 @@
 
 # iobroker.poolsteuerung
 
-Version 0.0.2 - vollständige Konfiguration
+Version 0.0.2-beta1
 
-- Alle Reiter wieder enthalten
-- Textfelder für Sensoren und Aktoren
-- Dein Pool-Icon eingebunden
+- größere Abstände und schmalere Feldbreiten
+- unter jedem Feld eine Erklärung
+- alle Reiter bleiben erhalten
+- dein Pool-Icon bleibt erhalten
