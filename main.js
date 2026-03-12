@@ -1,19 +1,43 @@
 
 'use strict';
-const utils=require('@iobroker/adapter-core');
+const utils = require('@iobroker/adapter-core');
 
-class poolsteuerung extends utils.Adapter{
- constructor(options){
-  super({...options,name:'poolsteuerung'});
-  this.on('ready',this.onReady.bind(this));
- }
- async onReady(){
-  this.log.info('poolsteuerung started');
- }
+class Poolsteuerung extends utils.Adapter {
+    constructor(options) {
+        super({ ...options, name: 'poolsteuerung' });
+        this.on('ready', this.onReady.bind(this));
+        this.on('unload', this.onUnload.bind(this));
+    }
+
+    async onReady() {
+        this.log.info('poolsteuerung adapter started');
+        await this.setObjectNotExistsAsync('info.connection', {
+            type: 'state',
+            common: {
+                name: 'Connection',
+                type: 'boolean',
+                role: 'indicator.connected',
+                read: true,
+                write: false,
+                def: false
+            },
+            native: {}
+        });
+        await this.setStateAsync('info.connection', true, true);
+    }
+
+    async onUnload(callback) {
+        try {
+            await this.setStateAsync('info.connection', false, true);
+            callback();
+        } catch {
+            callback();
+        }
+    }
 }
 
-if(require.main!==module){
- module.exports=options=>new poolsteuerung(options);
-}else{
- new poolsteuerung();
+if (require.main !== module) {
+    module.exports = options => new Poolsteuerung(options);
+} else {
+    new Poolsteuerung();
 }

@@ -1,8 +1,8 @@
 
 # iobroker.poolsteuerung
 
-Version 0.0.2
+Version 0.0.2 - vollständige Konfiguration
 
-Fix:
-- Sensoren und Aktoren nutzen jetzt `objectId` statt `state`
-- Dadurch werden die Auswahlfelder in Admin korrekt angezeigt
+- Alle Reiter wieder enthalten
+- Textfelder für Sensoren und Aktoren
+- Dein Pool-Icon eingebunden

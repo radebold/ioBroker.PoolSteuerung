@@ -1,9 +1,52 @@
 {
+  "i18n": true,
   "type": "tabs",
   "items": {
-    "sensors": {
+    "tabGeneral": {
       "type": "panel",
-      "label": "Sensoren",
+      "label": "ALLGEMEIN",
+      "items": {
+        "adapterEnabled": {
+          "type": "checkbox",
+          "label": "Adapter aktiv"
+        },
+        "debugMode": {
+          "type": "checkbox",
+          "label": "Debug-Modus"
+        },
+        "pollIntervalMin": {
+          "type": "number",
+          "label": "Prüfintervall (Minuten)",
+          "min": 1
+        },
+        "poolDiameterM": {
+          "type": "number",
+          "label": "Pooldurchmesser (m)",
+          "step": 0.01
+        },
+        "poolWaterHeightM": {
+          "type": "number",
+          "label": "Wasserhöhe (m)",
+          "step": 0.01
+        },
+        "poolVolumeM3": {
+          "type": "number",
+          "label": "Poolvolumen (m³)",
+          "step": 0.1
+        },
+        "globalEnableStateId": {
+          "type": "text",
+          "label": "Allgemeine Freigabe State-ID"
+        },
+        "phDoseEnableStateId": {
+          "type": "text",
+          "label": "Freigabe-State-ID pH-Dosierung"
+        }
+      }
+    },
+    "tabSensors": {
+      "type": "panel",
+      "label": "SENSOREN",
       "items": {
         "phStateId": {
           "type": "text",
@@ -12,12 +55,36 @@
         "orpStateId": {
           "type": "text",
           "label": "State-ID ORP"
+        },
+        "waterTempStateId": {
+          "type": "text",
+          "label": "State-ID Wassertemperatur"
+        },
+        "outsideTempStateId": {
+          "type": "text",
+          "label": "State-ID Außentemperatur"
+        },
+        "pvPowerStateId": {
+          "type": "text",
+          "label": "State-ID PV-Leistung / Überschuss"
+        },
+        "batterySocStateId": {
+          "type": "text",
+          "label": "State-ID Akku SoC"
+        },
+        "batteryFullStateId": {
+          "type": "text",
+          "label": "State-ID Akku voll"
+        },
+        "gridPowerStateId": {
+          "type": "text",
+          "label": "State-ID Netzbezug / Einspeisung"
         }
       }
     },
-    "actuators": {
+    "tabActuators": {
       "type": "panel",
-      "label": "Aktoren",
+      "label": "AKTOREN",
       "items": {
         "phPumpSocketStateId": {
           "type": "text",
@@ -29,7 +96,167 @@
         },
         "circulationPumpSocketStateId": {
           "type": "text",
-          "label": "Umw\u00e4lzpumpe"
+          "label": "Umwälzpumpe"
+        },
+        "heatpumpTuyaStateId": {
+          "type": "text",
+          "label": "Wärmepumpe"
+        }
+      }
+    },
+    "tabPh": {
+      "type": "panel",
+      "label": "PH-DOSIERUNG",
+      "items": {
+        "phEnabled": {
+          "type": "checkbox",
+          "label": "pH-Regelung aktiv"
+        },
+        "phOnlyWhenPumpRunning": {
+          "type": "checkbox",
+          "label": "Nur dosieren wenn Umwälzpumpe läuft"
+        },
+        "phAllowManualDose": {
+          "type": "checkbox",
+          "label": "Manuelle Dosierung erlauben"
+        },
+        "phTarget": {
+          "type": "number",
+          "label": "Soll-pH",
+          "step": 0.01
+        },
+        "phMinDelta": {
+          "type": "number",
+          "label": "Minimale Abweichung",
+          "step": 0.01
+        },
+        "phPumpFlowMlMin": {
+          "type": "number",
+          "label": "Fördermenge Dosierpumpe (ml/min)",
+          "step": 0.1
+        },
+        "phMinusConcentrationPercent": {
+          "type": "number",
+          "label": "Konzentration pH-Minus (%)",
+          "step": 0.1
+        },
+        "phMaxRuntimeSec": {
+          "type": "number",
+          "label": "Max. Laufzeit je Dosierung (Sek.)"
+        },
+        "phDosingPauseMin": {
+          "type": "number",
+          "label": "Sperrzeit zwischen Dosierungen (Min.)"
+        },
+        "phDoseTimes": {
+          "type": "text",
+          "label": "Automatische Prüfzeiten"
+        },
+        "phGranulateFactorPercent": {
+          "type": "number",
+          "label": "Granulatfaktor (%)"
+        },
+        "phLiquidFactorPercent": {
+          "type": "number",
+          "label": "Flüssigfaktor (%)"
+        }
+      }
+    },
+    "tabChlorinator": {
+      "type": "panel",
+      "label": "CHLORINATOR",
+      "items": {
+        "chlorinatorEnabled": {
+          "type": "checkbox",
+          "label": "Chlorinator aktiv"
+        },
+        "chlorinatorOnlyWhenPumpRunning": {
+          "type": "checkbox",
+          "label": "Nur bei laufender Umwälzpumpe"
+        },
+        "chlorinatorAutoEnabled": {
+          "type": "checkbox",
+          "label": "ORP-Automatik aktiv"
+        },
+        "orpOn": {
+          "type": "number",
+          "label": "ORP EIN bei ≤"
+        },
+        "orpOff": {
+          "type": "number",
+          "label": "ORP AUS bei >"
+        },
+        "chlorinatorMinOnMin": {
+          "type": "number",
+          "label": "Mindest-EIN-Zeit (Min.)"
+        },
+        "chlorinatorMinOffMin": {
+          "type": "number",
+          "label": "Mindest-AUS-Zeit (Min.)"
+        },
+        "chlorinatorStopTime": {
+          "type": "text",
+          "label": "Abschaltzeit (HH:MM)"
+        }
+      }
+    },
+    "tabPumpHeat": {
+      "type": "panel",
+      "label": "PUMPE & WÄRMEPUMPE",
+      "items": {
+        "pumpEnabled": {
+          "type": "checkbox",
+          "label": "Umwälzpumpe aktiv"
+        },
+        "pumpRequiredForPh": {
+          "type": "checkbox",
+          "label": "Pumpe Voraussetzung für pH"
+        },
+        "pumpRequiredForChlorinator": {
+          "type": "checkbox",
+          "label": "Pumpe Voraussetzung für Chlorinator"
+        },
+        "pumpRequiredForHeatpump": {
+          "type": "checkbox",
+          "label": "Pumpe Voraussetzung für Wärmepumpe"
+        },
+        "heatpumpEnabled": {
+          "type": "checkbox",
+          "label": "Wärmepumpe aktiv"
+        },
+        "heatpumpOnlyWithPvSurplus": {
+          "type": "checkbox",
+          "label": "Nur bei PV-Überschuss"
+        },
+        "heatpumpRequiresBatteryFull": {
+          "type": "checkbox",
+          "label": "Akku muss voll sein"
+        },
+        "heatpumpOnlyWhenPumpRunning": {
+          "type": "checkbox",
+          "label": "Nur wenn Umwälzpumpe läuft"
+        },
+        "pumpStartTime": {
+          "type": "text",
+          "label": "Pumpen-Startzeit (HH:MM)"
+        },
+        "pumpEndTime": {
+          "type": "text",
+          "label": "Pumpen-Endzeit (HH:MM)"
+        },
+        "heatpumpTargetTemp": {
+          "type": "number",
+          "label": "Soll-Wassertemperatur",
+          "step": 0.1
+        },
+        "heatpumpMinWaterTemp": {
+          "type": "number",
+          "label": "Mindest-Wassertemperatur",
+          "step": 0.1
+        },
+        "heatpumpMinBatterySoc": {
+          "type": "number",
+          "label": "Mindest-Akku-SoC (%)"
         }
       }
     }
