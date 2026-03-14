@@ -1,11 +1,8 @@
 
-import type { Poolsteuerung } from "../main";
-import { hhmm } from "../utils/time";
-
-export class PumpController {
-  public constructor(private readonly adapter: Poolsteuerung) {}
-
-  public async tick(): Promise<void> {
+const { hhmm } = require("../utils/time");
+class PumpController {
+  constructor(adapter){ this.adapter=adapter; }
+  async tick(){
     if (!this.adapter.config.pumpEnabled) return;
     const now = hhmm();
     const start = this.adapter.config.pumpStartTime || "";
@@ -13,7 +10,6 @@ export class PumpController {
     if (!start || !end) return;
     const shouldRun = now >= start && now < end;
     const state = await this.adapter.getForeignBoolean(this.adapter.config.circulationPumpSocketStateId, false);
-
     if (shouldRun && !state) {
       await this.adapter.setForeignStateAsync(this.adapter.config.circulationPumpSocketStateId, true);
       await this.adapter.setStateAsync("status.pump.lastAction", `Pumpe EIN ${now}`, true);
@@ -24,3 +20,4 @@ export class PumpController {
     }
   }
 }
+module.exports = { PumpController };

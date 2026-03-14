@@ -1,28 +1,20 @@
 
-import type { Poolsteuerung } from "../main";
-import { hhmm } from "../utils/time";
-
-export class ChlorinatorController {
-  private last = 0;
-  public constructor(private readonly adapter: Poolsteuerung) {}
-
-  public async tick(): Promise<void> {
+const { hhmm } = require("../utils/time");
+class ChlorinatorController {
+  constructor(adapter){ this.adapter=adapter; this.last=0; }
+  async tick(){
     if (!this.adapter.config.chlorinatorEnabled || !this.adapter.config.chlorinatorAutoEnabled) return;
     const orp = await this.adapter.getForeignNumber(this.adapter.config.orpStateId);
     if (orp === null) return;
     const state = await this.adapter.getForeignBoolean(this.adapter.config.chlorinatorSocketStateId, false);
     const pump = await this.adapter.getForeignBoolean(this.adapter.config.circulationPumpSocketStateId, false);
-
-    if ((this.adapter.config.chlorinatorOnlyWhenPumpRunning && !pump) ||
-        (this.adapter.config.chlorinatorStopTime && hhmm() >= this.adapter.config.chlorinatorStopTime)) {
+    if ((this.adapter.config.chlorinatorOnlyWhenPumpRunning && !pump) || (this.adapter.config.chlorinatorStopTime && hhmm() >= this.adapter.config.chlorinatorStopTime)) {
       if (state) await this.adapter.setForeignStateAsync(this.adapter.config.chlorinatorSocketStateId, false);
       return;
     }
-
     const now = Date.now();
     const minOn = (Number(this.adapter.config.chlorinatorMinOnMin) || 0) * 60000;
     const minOff = (Number(this.adapter.config.chlorinatorMinOffMin) || 0) * 60000;
-
     if (state && orp >= Number(this.adapter.config.orpOff || 780) && now - this.last >= minOn) {
       await this.adapter.setForeignStateAsync(this.adapter.config.chlorinatorSocketStateId, false);
       this.last = now;
@@ -34,3 +26,4 @@ export class ChlorinatorController {
     }
   }
 }
+module.exports = { ChlorinatorController };

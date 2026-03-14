@@ -1,34 +1,116 @@
 
 'use strict';
 const utils = require('@iobroker/adapter-core');
+const { PhController } = require('./controllers/ph');
+const { ChlorinatorController } = require('./controllers/chlorinator');
+const { PumpController } = require('./controllers/pump');
+const { HeatpumpController } = require('./controllers/heatpump');
 
 class Poolsteuerung extends utils.Adapter {
+  constructor(options = {}) {
+    super({ ...options, name: 'poolsteuerung' });
+    this.timer = null;
+    this.ph = new PhController(this);
+    this.chlor = new ChlorinatorController(this);
+    this.pump = new PumpController(this);
+    this.heat = new HeatpumpController(this);
+    this.on('ready', this.onReady.bind(this));
+    this.on('unload', this.onUnload.bind(this));
+    this.on('stateChange', this.onStateChange.bind(this));
+  }
 
-    constructor(options = {}) {
-        super({ ...options, name: 'poolsteuerung' });
-        this.on('ready', this.onReady.bind(this));
-    }
+  async onReady() {
+    await this.mk('info.connection', 'boolean', 'indicator.connected', false, false);
+    await this.mk('status.overall.message', 'string', 'text', '', false);
+    await this.mk('status.ph.previewMl', 'number', 'value', 0, false);
+    await this.mk('status.ph.previewRuntimeSec', 'number', 'value', 0, false);
+    await this.mk('status.ph.previewGranulateG', 'number', 'value', 0, false);
+    await this.mk('status.ph.lastAction', 'string', 'text', '', false);
+    await this.mk('status.ph.lastDoseMl', 'number', 'value', 0, false);
+    await this.mk('status.chlorinator.lastAction', 'string', 'text', '', false);
+    await this.mk('status.pump.lastAction', 'string', 'text', '', false);
+    await this.mk('control.manualDose', 'boolean', 'button', false, true);
 
-    async onReady() {
-        this.log.info('Poolsteuerung adapter started');
-        await this.setObjectNotExistsAsync('info.connection', {
-            type: 'state',
-            common: {
-                name: 'Connection',
-                type: 'boolean',
-                role: 'indicator.connected',
-                read: true,
-                write: false,
-                def: false,
-            },
-            native: {},
-        });
-        await this.setStateAsync('info.connection', true, true);
+    await this.setStateAsync('info.connection', true, true);
+    await this.setStateAsync('status.overall.message', 'Adapter gestartet - TypeScript 0.1.0-beta3', true);
+
+    this.subscribeStates('control.manualDose');
+    if (this.config.phStateId) this.subscribeForeignStates(this.config.phStateId);
+    if (this.config.orpStateId) this.subscribeForeignStates(this.config.orpStateId);
+
+    await this.ph.preview();
+
+    this.timer = setInterval(() => void this.loop(), Math.max(1, Number(this.config.pollIntervalMin) || 1) * 60000);
+    this.setTimeout(() => void this.loop(), 2000);
+  }
+
+  async mk(id, type, role, def, write) {
+    await this.setObjectNotExistsAsync(id, {
+      type: 'state',
+      common: { name: id, type, role, read: true, write, def },
+      native: {},
+    });
+    if (!write) await this.setStateAsync(id, def, true);
+  }
+
+  async onStateChange(id, state) {
+    if (!state) return;
+    if (id === `${this.namespace}.control.manualDose` && state.val === true && !state.ack) {
+      await this.ph.dose('Manuell');
+      await this.setStateAsync('control.manualDose', false, true);
     }
+    if (id === this.config.phStateId) {
+      await this.ph.preview();
+    }
+  }
+
+  async loop() {
+    try {
+      if (!this.config.adapterEnabled) return;
+      await this.pump.tick();
+      await this.ph.preview();
+      await this.ph.tick();
+      await this.chlor.tick();
+      await this.heat.tick();
+    } catch (error) {
+      this.log.error(error.message);
+    }
+  }
+
+  async onUnload(callback) {
+    try {
+      if (this.timer) clearInterval(this.timer);
+      await this.setStateAsync('info.connection', false, true);
+      callback();
+    } catch {
+      callback();
+    }
+  }
+
+  async getForeignNumber(id) {
+    if (!id) return null;
+    try {
+      const s = await this.getForeignStateAsync(id);
+      const n = Number(s?.val);
+      return Number.isNaN(n) ? null : n;
+    } catch {
+      return null;
+    }
+  }
+
+  async getForeignBoolean(id, fb) {
+    if (!id) return fb;
+    try {
+      const s = await this.getForeignStateAsync(id);
+      return s ? !!s.val : fb;
+    } catch {
+      return fb;
+    }
+  }
 }
 
 if (require.main !== module) {
-    module.exports = options => new Poolsteuerung(options);
+  module.exports = options => new Poolsteuerung(options);
 } else {
-    (() => new Poolsteuerung())();
+  (() => new Poolsteuerung())();
 }

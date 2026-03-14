@@ -1,16 +1,11 @@
 
-import type { Poolsteuerung } from "../main";
-import { hhmm, parseTimes } from "../utils/time";
-import { calcPoolVolumeL } from "../utils/poolMath";
-
-export class PhController {
-  private running = false;
-  private readonly last: Record<string, number> = {};
-  public constructor(private readonly adapter: Poolsteuerung) {}
-
-  private calc(ph: number): { ml: number; sec: number; g: number } {
+const { hhmm, parseTimes } = require("../utils/time");
+const { calcPoolVolumeL } = require("../utils/poolMath");
+class PhController {
+  constructor(adapter){ this.adapter=adapter; this.running=false; this.last={}; }
+  calc(ph){
     const delta = Number(ph) - (Number(this.adapter.config.phTarget) || 7.2);
-    if (isNaN(delta) || delta <= Number(this.adapter.config.phMinDelta || 0)) return { ml: 0, sec: 0, g: 0 };
+    if (isNaN(delta) || delta <= Number(this.adapter.config.phMinDelta || 0)) return { ml:0, sec:0, g:0 };
     const volumeL = calcPoolVolumeL(this.adapter.config.poolVolumeM3, this.adapter.config.poolDiameterM, this.adapter.config.poolWaterHeightM);
     const base = Math.max(0, delta * 10 * Math.max(0, volumeL / 100));
     const ml = Math.round(base * ((Number(this.adapter.config.phLiquidFactorPercent) || 100) / 100));
@@ -18,8 +13,7 @@ export class PhController {
     const sec = Math.min(Number(this.adapter.config.phMaxRuntimeSec) || 300, Math.round((ml / Math.max(0.1, Number(this.adapter.config.phPumpFlowMlMin) || 16)) * 60));
     return { ml, sec, g };
   }
-
-  public async preview(): Promise<void> {
+  async preview(){
     const ph = await this.adapter.getForeignNumber(this.adapter.config.phStateId);
     if (ph === null) return;
     const r = this.calc(ph);
@@ -27,8 +21,7 @@ export class PhController {
     await this.adapter.setStateAsync("status.ph.previewRuntimeSec", r.sec, true);
     await this.adapter.setStateAsync("status.ph.previewGranulateG", r.g, true);
   }
-
-  public async tick(): Promise<void> {
+  async tick(){
     if (!this.adapter.config.phEnabled || this.running) return;
     const now = hhmm();
     for (const t of parseTimes(this.adapter.config.phDoseTimes)) {
@@ -38,8 +31,7 @@ export class PhController {
       }
     }
   }
-
-  public async dose(reason: string): Promise<void> {
+  async dose(reason){
     const ph = await this.adapter.getForeignNumber(this.adapter.config.phStateId);
     if (ph === null) return;
     const rel = await this.adapter.getForeignBoolean(this.adapter.config.phDoseEnableStateId, true);
@@ -59,3 +51,4 @@ export class PhController {
     }, r.sec * 1000);
   }
 }
+module.exports = { PhController };

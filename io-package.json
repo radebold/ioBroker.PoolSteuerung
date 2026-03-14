@@ -2,7 +2,7 @@
   "common": {
     "name": "poolsteuerung",
     "title": "Poolsteuerung",
-    "version": "0.1.0-beta2",
+    "version": "0.1.0-beta3",
     "desc": {
       "de": "Adapter zur Steuerung eines Salzwasserpools",
       "en": "Adapter for controlling a saltwater pool"
@@ -98,5 +98,5 @@
       "native": {}
     }
   ],
-  "version": "0.1.0-beta2"
+  "version": "0.1.0-beta3"
 }
