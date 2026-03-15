@@ -1,1 +1,1 @@
-beta6 start-fix with dose guard
+beta7 with heatpump pv battery logic

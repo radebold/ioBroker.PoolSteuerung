@@ -2,7 +2,7 @@
   "common": {
     "name": "poolsteuerung",
     "title": "Poolsteuerung",
-    "version": "0.1.0-beta6",
+    "version": "0.1.0-beta7",
     "icon": "poolsteuerung.png",
     "mode": "daemon",
     "type": "hardware",
@@ -50,9 +50,29 @@
     "chlorinatorStopTime": "15:30",
     "pumpEnabled": true,
     "pumpStartTime": "11:00",
-    "pumpEndTime": "17:00"
+    "pumpEndTime": "17:00",
+    "heatpumpEnabled": true,
+    "heatpumpPowerStateId": "tuya.0.83174025e8db848dc0df.1",
+    "heatpumpModeStateId": "tuya.0.83174025e8db848dc0df.105",
+    "heatpumpSetTempStateId": "tuya.0.83174025e8db848dc0df.106",
+    "waterTempStateId": "tuya.0.83174025e8db848dc0df.102",
+    "outsideTempStateId": "tuya.0.83174025e8db848dc0df.124",
+    "gridFeedInStateId": "sun2000-modbus.0.grid.feedIn",
+    "batterySocStateId": "sun2000-modbus.0.storage.stateOfCharge",
+    "pvPowerStateId": "sun2000-modbus.0.inputPower",
+    "gridSupplyStateId": "sun2000-modbus.0.grid.supplyFrom",
+    "heatpumpTargetTemp": 26,
+    "heatpumpPvMinFeedInW": 1200,
+    "heatpumpMinBatterySoc": 90,
+    "heatpumpOnlyWithPvSurplus": true,
+    "heatpumpRequiresBatteryFull": false,
+    "heatpumpOnlyWhenPumpRunning": true,
+    "heatpumpBatteryFullSoc": 98,
+    "heatpumpMinWaterTemp": 15,
+    "heatpumpMinOnMin": 10,
+    "heatpumpMinOffMin": 5
   },
   "objects": [],
   "instanceObjects": [],
-  "version": "0.1.0-beta6"
+  "version": "0.1.0-beta7"
 }

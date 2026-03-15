@@ -1,5 +1,6 @@
 'use strict';
 const utils = require('@iobroker/adapter-core');
+
 class Poolsteuerung extends utils.Adapter {
   constructor(options = {}) {
     super({ ...options, name: 'poolsteuerung' });
@@ -7,6 +8,7 @@ class Poolsteuerung extends utils.Adapter {
     this.phRunning = false;
     this.lastDoseKeys = {};
     this.lastChlorSwitch = 0;
+    this.lastHeatpumpSwitch = 0;
     this.on('ready', this.onReady.bind(this));
     this.on('unload', this.onUnload.bind(this));
     this.on('stateChange', this.onStateChange.bind(this));
@@ -18,57 +20,47 @@ class Poolsteuerung extends utils.Adapter {
   }
   async onReady() {
     await this.mk('info.connection', 'boolean', 'indicator.connected', false, false);
-    await this.mk('status.overall.message', 'string', 'text', '', false);
     await this.mk('status.ph.previewMl', 'number', 'value', 0, false);
     await this.mk('status.ph.previewRuntimeSec', 'number', 'value', 0, false);
     await this.mk('status.ph.lastAction', 'string', 'text', '', false);
     await this.mk('status.chlorinator.lastAction', 'string', 'text', '', false);
     await this.mk('status.pump.lastAction', 'string', 'text', '', false);
+    await this.mk('status.heatpump.lastAction', 'string', 'text', '', false);
+    await this.mk('status.heatpump.lastReason', 'string', 'text', '', false);
+    await this.mk('status.heatpump.waterTemp', 'number', 'value.temperature', 0, false);
+    await this.mk('status.heatpump.energySource', 'string', 'text', '', false);
     await this.mk('status.debug.lastCycle', 'string', 'text', '', false);
     await this.mk('status.debug.lastDecision', 'string', 'text', '', false);
     await this.mk('control.manualDose', 'boolean', 'button', false, true);
     await this.setStateAsync('info.connection', true, true);
     this.subscribeStates('control.manualDose');
-    if (this.config.phStateId) this.subscribeForeignStates(this.config.phStateId);
-    if (this.config.orpStateId) this.subscribeForeignStates(this.config.orpStateId);
-    this.debug('Adapter gestartet');
-    this.debug('simulateMode=' + !!this.config.simulateMode);
-    this.debug('LiquidFactor=' + this.config.phLiquidFactorPercent + '%');
-    this.debug('MaxDoseMlPerCycle=' + this.config.phMaxDoseMlPerCycle);
     this.timer = setInterval(() => this.loop(), Math.max(1, Number(this.config.pollIntervalMin) || 1) * 60000);
     setTimeout(() => this.loop(), 1000);
   }
-  async onUnload(callback) {
-    try { if (this.timer) clearInterval(this.timer); await this.setStateAsync('info.connection', false, true); callback(); } catch { callback(); }
-  }
+  async onUnload(callback) { try { if (this.timer) clearInterval(this.timer); await this.setStateAsync('info.connection', false, true); callback(); } catch { callback(); } }
   async onStateChange(id, state) {
     if (!state) return;
     if (id === `${this.namespace}.control.manualDose` && state.val === true && !state.ack) {
-      this.debug('Manuelle Dosierung angefordert');
       await this.phDose('Manuell');
       await this.setStateAsync('control.manualDose', false, true);
     }
   }
-  async getForeignNumber(id) {
-    if (!id) return null;
-    try { const s = await this.getForeignStateAsync(id); const n = Number(s && s.val); return isNaN(n) ? null : n; } catch { return null; }
-  }
-  async getForeignBoolean(id, fallback) {
-    if (!id) return fallback;
-    try { const s = await this.getForeignStateAsync(id); return s ? !!s.val : fallback; } catch { return fallback; }
-  }
+  async getForeignNumber(id) { if (!id) return null; try { const s = await this.getForeignStateAsync(id); const n = Number(s && s.val); return isNaN(n) ? null : n; } catch { return null; } }
+  async getForeignBoolean(id, fallback) { if (!id) return fallback; try { const s = await this.getForeignStateAsync(id); return s ? !!s.val : fallback; } catch { return fallback; } }
   async setActorState(id, val, context) {
     if (!id) return;
-    if (this.config.simulateMode) {
-      this.debug(`${context}: SIMULATION ${id} -> ${val}`);
-      await this.setStateAsync('status.debug.lastDecision', `${context}: simulate ${id}=${val}`, true);
-      return;
-    }
+    if (this.config.simulateMode) { this.debug(`${context}: SIMULATION ${id} -> ${val}`); await this.setStateAsync('status.debug.lastDecision', `${context}: simulate ${id}=${val}`, true); return; }
     this.debug(`${context}: schalte ${id} -> ${val}`);
     await this.setForeignStateAsync(id, val);
     await this.setStateAsync('status.debug.lastDecision', `${context}: ${id}=${val}`, true);
   }
-  hhmm() { const d = new Date(); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+  async setForeignValue(id, val, context) {
+    if (!id) return;
+    if (this.config.simulateMode) { this.debug(`${context}: SIMULATION ${id} -> ${val}`); return; }
+    this.debug(`${context}: setze ${id} -> ${val}`);
+    await this.setForeignStateAsync(id, val);
+  }
+  hhmm() { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
   parseTimes(csv) { return String(csv || '').split(',').map(x => x.trim()).filter(Boolean); }
   calcPoolVolumeL() {
     const configured = Number(this.config.poolVolumeM3) || 0;
@@ -86,7 +78,7 @@ class Poolsteuerung extends utils.Adapter {
   }
   async phPreview() {
     const ph = await this.getForeignNumber(this.config.phStateId);
-    if (ph === null) { this.debug('pH Vorschau: kein pH-Wert'); return; }
+    if (ph === null) return;
     const r = this.calcPhDose(ph);
     this.debug(`pH Berechnung -> ph=${ph} delta=${r.delta} rawMl=${r.rawMl} limitedMl=${r.limitedMl} sec=${r.sec}`);
     await this.setStateAsync('status.ph.previewMl', r.limitedMl, true);
@@ -94,41 +86,36 @@ class Poolsteuerung extends utils.Adapter {
   }
   async phDose(reason) {
     const ph = await this.getForeignNumber(this.config.phStateId);
-    if (ph === null) { this.debug('pH blockiert: kein pH-Wert'); return; }
+    if (ph === null) return;
     const rel = await this.getForeignBoolean(this.config.phDoseEnableStateId, true);
-    if (!rel) { this.debug('pH blockiert: Freigabe false'); return; }
+    if (!rel) return;
     const pump = await this.getForeignBoolean(this.config.circulationPumpSocketStateId, false);
-    if (!pump && this.config.phOnlyWhenPumpRunning) { this.debug('pH blockiert: Pumpe aus'); return; }
+    if (!pump && this.config.phOnlyWhenPumpRunning) return;
     const r = this.calcPhDose(ph);
-    if (r.limitedMl <= 0 || r.sec <= 0) { this.debug('pH nicht nötig'); return; }
-    if (r.rawMl > r.limitedMl) this.debug(`pH Dosis begrenzt -> rawMl=${r.rawMl} limitedMl=${r.limitedMl}`);
+    if (r.limitedMl <= 0 || r.sec <= 0) return;
     this.phRunning = true;
-    this.debug(`pH START -> reason=${reason} delta=${r.delta} rawMl=${r.rawMl} limitedMl=${r.limitedMl} sec=${r.sec}`);
     await this.setActorState(this.config.phPumpSocketStateId, true, 'pH START');
     await this.setStateAsync('status.ph.lastAction', `${reason}: gestartet (${r.limitedMl} ml)`, true);
     setTimeout(async () => {
       await this.setActorState(this.config.phPumpSocketStateId, false, 'pH ENDE');
       this.phRunning = false;
-      this.debug(`pH ENDE -> reason=${reason}`);
       await this.setStateAsync('status.ph.lastAction', `${reason}: beendet`, true);
     }, r.sec * 1000);
   }
   async phTick() {
-    if (!this.config.phEnabled || this.phRunning) { this.debug(`pH Tick übersprungen -> enabled=${this.config.phEnabled} running=${this.phRunning}`); return; }
+    if (!this.config.phEnabled || this.phRunning) return;
     const now = this.hhmm();
     for (const t of this.parseTimes(this.config.phDoseTimes)) {
-      if (t === now && !this.lastDoseKeys[t]) { this.lastDoseKeys[t] = Date.now(); this.debug(`pH Automatik bei ${t}`); await this.phDose('Automatik ' + t); }
+      if (t === now && !this.lastDoseKeys[t]) { this.lastDoseKeys[t] = Date.now(); await this.phDose('Automatik ' + t); }
     }
   }
   async chlorTick() {
-    if (!this.config.chlorinatorEnabled || !this.config.chlorinatorAutoEnabled) { this.debug('Chlorinator Tick übersprungen'); return; }
+    if (!this.config.chlorinatorEnabled || !this.config.chlorinatorAutoEnabled) return;
     const orp = await this.getForeignNumber(this.config.orpStateId);
-    if (orp === null) { this.debug('Chlorinator blockiert: kein ORP'); return; }
+    if (orp === null) return;
     const state = await this.getForeignBoolean(this.config.chlorinatorSocketStateId, false);
     const pump = await this.getForeignBoolean(this.config.circulationPumpSocketStateId, false);
-    this.debug(`Chlorinator Check -> ORP=${orp} state=${state} pump=${pump}`);
     if (this.config.chlorinatorOnlyWhenPumpRunning && !pump) {
-      this.debug('Chlorinator blockiert: Pumpe aus');
       if (state) await this.setActorState(this.config.chlorinatorSocketStateId, false, 'Chlorinator AUS wegen Pumpe');
       return;
     }
@@ -136,52 +123,89 @@ class Poolsteuerung extends utils.Adapter {
     const minOn = (Number(this.config.chlorinatorMinOnMin) || 0) * 60000;
     const minOff = (Number(this.config.chlorinatorMinOffMin) || 0) * 60000;
     if (state && orp >= Number(this.config.orpOff || 780) && now - this.lastChlorSwitch >= minOn) {
-      this.debug(`Chlorinator AUS bei ORP ${orp}`);
       await this.setActorState(this.config.chlorinatorSocketStateId, false, 'Chlorinator AUS');
       this.lastChlorSwitch = now;
       await this.setStateAsync('status.chlorinator.lastAction', `AUS bei ORP ${orp}`, true);
     } else if (!state && orp <= Number(this.config.orpOn || 720) && now - this.lastChlorSwitch >= minOff) {
-      this.debug(`Chlorinator EIN bei ORP ${orp}`);
       await this.setActorState(this.config.chlorinatorSocketStateId, true, 'Chlorinator EIN');
       this.lastChlorSwitch = now;
       await this.setStateAsync('status.chlorinator.lastAction', `EIN bei ORP ${orp}`, true);
-    } else {
-      this.debug('Chlorinator keine Änderung');
     }
   }
   async pumpTick() {
-    if (!this.config.pumpEnabled) { this.debug('Pumpenlogik deaktiviert'); return; }
+    if (!this.config.pumpEnabled) return;
     const now = this.hhmm();
     const start = this.config.pumpStartTime || '';
     const end = this.config.pumpEndTime || '';
-    if (!start || !end) { this.debug('Pumpenlogik blockiert: Zeitfenster fehlt'); return; }
+    if (!start || !end) return;
     const shouldRun = now >= start && now < end;
     const state = await this.getForeignBoolean(this.config.circulationPumpSocketStateId, false);
-    this.debug(`Pumpenfenster ${start}-${end} | jetzt=${now} | shouldRun=${shouldRun} | state=${state}`);
-    if (shouldRun && !state) {
-      await this.setActorState(this.config.circulationPumpSocketStateId, true, 'Pumpe EIN');
-      await this.setStateAsync('status.pump.lastAction', `Pumpe EIN ${now}`, true);
+    if (shouldRun && !state) { await this.setActorState(this.config.circulationPumpSocketStateId, true, 'Pumpe EIN'); await this.setStateAsync('status.pump.lastAction', `Pumpe EIN ${now}`, true); }
+    if (!shouldRun && state) { await this.setActorState(this.config.circulationPumpSocketStateId, false, 'Pumpe AUS'); await this.setStateAsync('status.pump.lastAction', `Pumpe AUS ${now}`, true); }
+  }
+  async heatpumpOff(reason) {
+    const powerState = await this.getForeignBoolean(this.config.heatpumpPowerStateId, false);
+    if (!powerState) { await this.setStateAsync('status.heatpump.lastReason', reason, true); return; }
+    await this.setActorState(this.config.heatpumpPowerStateId, false, 'Heatpump AUS');
+    this.lastHeatpumpSwitch = Date.now();
+    await this.setStateAsync('status.heatpump.lastAction', 'AUS', true);
+    await this.setStateAsync('status.heatpump.lastReason', reason, true);
+  }
+  async heatpumpTick() {
+    if (!this.config.heatpumpEnabled) return;
+    const waterTemp = await this.getForeignNumber(this.config.waterTempStateId);
+    const feedIn = await this.getForeignNumber(this.config.gridFeedInStateId);
+    const batterySoc = await this.getForeignNumber(this.config.batterySocStateId);
+    const pump = await this.getForeignBoolean(this.config.circulationPumpSocketStateId, false);
+    const powerState = await this.getForeignBoolean(this.config.heatpumpPowerStateId, false);
+    await this.setStateAsync('status.heatpump.waterTemp', waterTemp === null ? 0 : waterTemp, true);
+    this.debug(`Heatpump Check -> waterTemp=${waterTemp} target=${this.config.heatpumpTargetTemp} feedIn=${feedIn} soc=${batterySoc} pump=${pump} power=${powerState}`);
+    if (waterTemp === null) { await this.heatpumpOff('Keine Wassertemperatur'); return; }
+    if (waterTemp < Number(this.config.heatpumpMinWaterTemp || 0)) { await this.heatpumpOff('Wassertemperatur unter Mindestwert'); return; }
+    if (this.config.heatpumpOnlyWhenPumpRunning && !pump) { await this.heatpumpOff('Umwälzpumpe aus'); return; }
+    const target = Number(this.config.heatpumpTargetTemp || 26);
+    const tempNeedsHeat = waterTemp < target;
+    const batteryFull = batterySoc !== null && batterySoc >= Number(this.config.heatpumpBatteryFullSoc || 98);
+    const byPv = feedIn !== null && feedIn >= Number(this.config.heatpumpPvMinFeedInW || 1200);
+    const bySoc = batterySoc !== null && batterySoc >= Number(this.config.heatpumpMinBatterySoc || 90);
+    let energyAllowed = false;
+    let energySource = '';
+    if (this.config.heatpumpRequiresBatteryFull && batteryFull) { energyAllowed = true; energySource = 'batteryFull'; }
+    else if (byPv) { energyAllowed = true; energySource = 'pvFeedIn'; }
+    else if (bySoc) { energyAllowed = true; energySource = 'batterySoc'; }
+    await this.setStateAsync('status.heatpump.energySource', energySource, true);
+    const now = Date.now();
+    const minOn = (Number(this.config.heatpumpMinOnMin) || 0) * 60000;
+    const minOff = (Number(this.config.heatpumpMinOffMin) || 0) * 60000;
+    if (!tempNeedsHeat) {
+      if (powerState && now - this.lastHeatpumpSwitch < minOn) return;
+      await this.heatpumpOff('Zieltemperatur erreicht');
+      return;
     }
-    if (!shouldRun && state) {
-      await this.setActorState(this.config.circulationPumpSocketStateId, false, 'Pumpe AUS');
-      await this.setStateAsync('status.pump.lastAction', `Pumpe AUS ${now}`, true);
+    if (!energyAllowed) {
+      if (powerState && now - this.lastHeatpumpSwitch < minOn) return;
+      await this.heatpumpOff('Keine Energie-Freigabe');
+      return;
+    }
+    if (!powerState && now - this.lastHeatpumpSwitch < minOff) return;
+    if (!powerState) {
+      await this.setForeignValue(this.config.heatpumpModeStateId, 1, 'Heatpump Mode warm');
+      await this.setForeignValue(this.config.heatpumpSetTempStateId, target, 'Heatpump SetTemp');
+      await this.setActorState(this.config.heatpumpPowerStateId, true, 'Heatpump EIN');
+      this.lastHeatpumpSwitch = now;
+      await this.setStateAsync('status.heatpump.lastAction', 'EIN', true);
+      await this.setStateAsync('status.heatpump.lastReason', `Energiequelle: ${energySource}`, true);
+    } else {
+      await this.setStateAsync('status.heatpump.lastReason', `Läuft weiter (${energySource})`, true);
     }
   }
   async loop() {
     await this.setStateAsync('status.debug.lastCycle', new Date().toISOString(), true);
-    this.debug('----- Zyklus -----');
-    const ph = await this.getForeignNumber(this.config.phStateId);
-    const orp = await this.getForeignNumber(this.config.orpStateId);
-    const pump = await this.getForeignBoolean(this.config.circulationPumpSocketStateId, false);
-    this.debug(`Sensoren -> pH=${ph} ORP=${orp} Pumpe=${pump}`);
     await this.pumpTick();
     await this.phPreview();
     await this.phTick();
     await this.chlorTick();
+    await this.heatpumpTick();
   }
 }
-if (require.main !== module) {
-  module.exports = options => new Poolsteuerung(options);
-} else {
-  (() => new Poolsteuerung())();
-}
+if (require.main !== module) { module.exports = options => new Poolsteuerung(options); } else { (() => new Poolsteuerung())(); }

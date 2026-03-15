@@ -28,120 +28,58 @@
         }
       }
     },
-    "ph": {
+    "heat": {
       "type": "panel",
-      "label": "pH",
+      "label": "W\u00e4rmepumpe",
       "items": {
-        "phStateId": {
-          "type": "text",
-          "label": "State-ID pH",
-          "newLine": true
-        },
-        "phDoseEnableStateId": {
-          "type": "text",
-          "label": "Freigabe-State",
-          "newLine": true
-        },
-        "phPumpSocketStateId": {
-          "type": "text",
-          "label": "Dosierpumpe",
-          "newLine": true
-        },
-        "circulationPumpSocketStateId": {
-          "type": "text",
-          "label": "Umw\u00e4lzpumpe",
-          "newLine": true
-        },
-        "phTarget": {
-          "type": "number",
-          "label": "Soll-pH",
-          "newLine": true
-        },
-        "phMinDelta": {
-          "type": "number",
-          "label": "Minimale Abweichung",
-          "newLine": true
-        },
-        "phPumpFlowMlMin": {
-          "type": "number",
-          "label": "F\u00f6rdermenge ml/min",
-          "newLine": true
-        },
-        "phLiquidFactorPercent": {
-          "type": "number",
-          "label": "Fl\u00fcssigfaktor %",
-          "newLine": true
-        },
-        "phMaxDoseMlPerCycle": {
-          "type": "number",
-          "label": "Max ml pro Zyklus",
-          "newLine": true
-        },
-        "phMaxRuntimeSec": {
-          "type": "number",
-          "label": "Max Laufzeit Sek",
-          "newLine": true
-        },
-        "phDoseTimes": {
-          "type": "text",
-          "label": "Pr\u00fcfzeiten",
-          "newLine": true
-        }
-      }
-    },
-    "chlor": {
-      "type": "panel",
-      "label": "Chlorinator",
-      "items": {
-        "orpStateId": {
-          "type": "text",
-          "label": "State-ID ORP",
-          "newLine": true
-        },
-        "chlorinatorSocketStateId": {
-          "type": "text",
-          "label": "Chlorinator",
-          "newLine": true
-        },
-        "chlorinatorEnabled": {
+        "heatpumpEnabled": {
           "type": "checkbox",
-          "label": "Chlorinator aktiv",
+          "label": "W\u00e4rmepumpe aktiv",
           "newLine": true
         },
-        "chlorinatorAutoEnabled": {
-          "type": "checkbox",
-          "label": "ORP-Automatik aktiv",
-          "newLine": true
-        },
-        "orpOn": {
-          "type": "number",
-          "label": "ORP EIN bei <=",
-          "newLine": true
-        },
-        "orpOff": {
-          "type": "number",
-          "label": "ORP AUS bei >",
-          "newLine": true
-        }
-      }
-    },
-    "pump": {
-      "type": "panel",
-      "label": "Pumpe",
-      "items": {
-        "pumpEnabled": {
-          "type": "checkbox",
-          "label": "Pumpe aktiv",
-          "newLine": true
-        },
-        "pumpStartTime": {
+        "heatpumpPowerStateId": {
           "type": "text",
-          "label": "Startzeit",
+          "label": "Power-State",
           "newLine": true
         },
-        "pumpEndTime": {
+        "heatpumpModeStateId": {
           "type": "text",
-          "label": "Endzeit",
+          "label": "Mode-State",
+          "newLine": true
+        },
+        "heatpumpSetTempStateId": {
+          "type": "text",
+          "label": "SetTemp-State",
+          "newLine": true
+        },
+        "waterTempStateId": {
+          "type": "text",
+          "label": "Wassertemperatur-State",
+          "newLine": true
+        },
+        "gridFeedInStateId": {
+          "type": "text",
+          "label": "Netzeinspeisung-State",
+          "newLine": true
+        },
+        "batterySocStateId": {
+          "type": "text",
+          "label": "Batterie SoC-State",
+          "newLine": true
+        },
+        "heatpumpTargetTemp": {
+          "type": "number",
+          "label": "Solltemperatur",
+          "newLine": true
+        },
+        "heatpumpPvMinFeedInW": {
+          "type": "number",
+          "label": "Min PV Einspeisung W",
+          "newLine": true
+        },
+        "heatpumpMinBatterySoc": {
+          "type": "number",
+          "label": "Min Batterie SoC %",
           "newLine": true
         }
       }
