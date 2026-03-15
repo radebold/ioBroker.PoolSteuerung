@@ -1,14 +1,1 @@
-
-# iobroker.poolsteuerung 0.1.0-beta4
-
-Enthält:
-- Debug-Modus mit ausführlichen Entscheidungen im Log
-- Simulationsmodus ohne echtes Schalten
-- pH Vorschau + Dosierlogik
-- Chlorinator ORP Logik
-- Pumpen-Zeitfenster
-- Debug-States:
-  - status.debug.lastCycle
-  - status.debug.lastDecision
-
-Empfohlen für Wintertests mit Test-States unter 0_userdata.0.PoolTest
+# iobroker.poolsteuerung 0.1.0-beta5\n\nNeu: pH LiquidFactor standardmäßig 40 %, Maximaldosis pro Zyklus 70 ml, Debug-Logging mit rawMl und limitedMl, Simulationsmodus.

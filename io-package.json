@@ -2,7 +2,7 @@
   "common": {
     "name": "poolsteuerung",
     "title": "Poolsteuerung",
-    "version": "0.1.0-beta4",
+    "version": "0.1.0-beta5",
     "icon": "poolsteuerung.png",
     "mode": "daemon",
     "type": "hardware",
@@ -38,7 +38,8 @@
     "phOnlyWhenPumpRunning": true,
     "phDoseTimes": "12:00,15:00",
     "phGranulateFactorPercent": 100,
-    "phLiquidFactorPercent": 100,
+    "phLiquidFactorPercent": 40,
+    "phMaxDoseMlPerCycle": 70,
     "chlorinatorEnabled": true,
     "chlorinatorAutoEnabled": true,
     "chlorinatorOnlyWhenPumpRunning": true,
@@ -53,5 +54,5 @@
   },
   "objects": [],
   "instanceObjects": [],
-  "version": "0.1.0-beta4"
+  "version": "0.1.0-beta5"
 }

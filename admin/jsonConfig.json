@@ -28,55 +28,28 @@
         }
       }
     },
-    "sensors": {
+    "ph": {
       "type": "panel",
-      "label": "Sensoren",
+      "label": "pH",
       "items": {
         "phStateId": {
           "type": "text",
           "label": "State-ID pH",
           "newLine": true
         },
-        "orpStateId": {
-          "type": "text",
-          "label": "State-ID ORP",
-          "newLine": true
-        },
         "phDoseEnableStateId": {
           "type": "text",
           "label": "Freigabe-State",
           "newLine": true
-        }
-      }
-    },
-    "actors": {
-      "type": "panel",
-      "label": "Aktoren",
-      "items": {
+        },
         "phPumpSocketStateId": {
           "type": "text",
           "label": "Dosierpumpe",
           "newLine": true
         },
-        "chlorinatorSocketStateId": {
-          "type": "text",
-          "label": "Chlorinator",
-          "newLine": true
-        },
         "circulationPumpSocketStateId": {
           "type": "text",
           "label": "Umw\u00e4lzpumpe",
-          "newLine": true
-        }
-      }
-    },
-    "ph": {
-      "type": "panel",
-      "label": "pH",
-      "items": {
-        "phEnabled": {
-          "type": "checkbox",
-          "label": "pH aktiv",
           "newLine": true
         },
         "phTarget": {
@@ -92,6 +65,16 @@
         "phPumpFlowMlMin": {
           "type": "number",
           "label": "F\u00f6rdermenge ml/min",
+          "newLine": true
+        },
+        "phLiquidFactorPercent": {
+          "type": "number",
+          "label": "Fl\u00fcssigfaktor %",
+          "newLine": true
+        },
+        "phMaxDoseMlPerCycle": {
+          "type": "number",
+          "label": "Max ml pro Zyklus",
           "newLine": true
         },
         "phMaxRuntimeSec": {
@@ -110,6 +93,16 @@
       "type": "panel",
       "label": "Chlorinator",
       "items": {
+        "orpStateId": {
+          "type": "text",
+          "label": "State-ID ORP",
+          "newLine": true
+        },
+        "chlorinatorSocketStateId": {
+          "type": "text",
+          "label": "Chlorinator",
+          "newLine": true
+        },
         "chlorinatorEnabled": {
           "type": "checkbox",
           "label": "Chlorinator aktiv",
