@@ -25,25 +25,25 @@
           "type": "number",
           "label": "Pr\u00fcfintervall (Minuten)",
           "newLine": true,
-          "step": 1
+          "help": "Ganzzahl in Minuten"
         },
         "poolDiameterM": {
-          "type": "number",
+          "type": "text",
           "label": "Pooldurchmesser (m)",
           "newLine": true,
-          "step": 0.01
+          "help": "z. B. 4.60 oder 4,60"
         },
         "poolWaterHeightM": {
-          "type": "number",
+          "type": "text",
           "label": "Wasserh\u00f6he (m)",
           "newLine": true,
-          "step": 0.01
+          "help": "z. B. 1.10 oder 1,10"
         },
         "poolVolumeM3": {
-          "type": "number",
+          "type": "text",
           "label": "Poolvolumen (m\u00b3)",
           "newLine": true,
-          "step": 0.01,
+          "help": "Wird aus Durchmesser und Wasserh\u00f6he berechnet",
           "disabled": true
         }
       }
@@ -75,38 +75,32 @@
         "phTarget": {
           "type": "number",
           "label": "Soll-pH",
-          "newLine": true,
-          "step": 0.01
+          "newLine": true
         },
         "phMinDelta": {
           "type": "number",
           "label": "Minimale Abweichung",
-          "newLine": true,
-          "step": 0.01
+          "newLine": true
         },
         "phPumpFlowMlMin": {
           "type": "number",
           "label": "F\u00f6rdermenge ml/min",
-          "newLine": true,
-          "step": 0.1
+          "newLine": true
         },
         "phLiquidFactorPercent": {
           "type": "number",
           "label": "Fl\u00fcssigfaktor %",
-          "newLine": true,
-          "step": 1
+          "newLine": true
         },
         "phMaxDoseMlPerCycle": {
           "type": "number",
           "label": "Max ml pro Zyklus",
-          "newLine": true,
-          "step": 1
+          "newLine": true
         },
         "phMaxRuntimeSec": {
           "type": "number",
           "label": "Max Laufzeit Sek",
-          "newLine": true,
-          "step": 1
+          "newLine": true
         },
         "phOnlyWhenPumpRunning": {
           "type": "checkbox",
@@ -152,26 +146,22 @@
         "orpOn": {
           "type": "number",
           "label": "ORP EIN bei <=",
-          "newLine": true,
-          "step": 1
+          "newLine": true
         },
         "orpOff": {
           "type": "number",
           "label": "ORP AUS bei >",
-          "newLine": true,
-          "step": 1
+          "newLine": true
         },
         "chlorinatorMinOnMin": {
           "type": "number",
           "label": "Mindest-EIN-Zeit (Min)",
-          "newLine": true,
-          "step": 1
+          "newLine": true
         },
         "chlorinatorMinOffMin": {
           "type": "number",
           "label": "Mindest-AUS-Zeit (Min)",
-          "newLine": true,
-          "step": 1
+          "newLine": true
         },
         "chlorinatorStopTime": {
           "type": "text",
@@ -243,14 +233,12 @@
         "heatpumpTargetTemp": {
           "type": "number",
           "label": "Solltemperatur",
-          "newLine": true,
-          "step": 0.1
+          "newLine": true
         },
         "heatpumpMinWaterTemp": {
           "type": "number",
           "label": "Min Wassertemperatur",
-          "newLine": true,
-          "step": 0.1
+          "newLine": true
         },
         "heatpumpOnlyWhenPumpRunning": {
           "type": "checkbox",
@@ -270,14 +258,12 @@
         "heatpumpMinOnMin": {
           "type": "number",
           "label": "Mindestlaufzeit Min",
-          "newLine": true,
-          "step": 1
+          "newLine": true
         },
         "heatpumpMinOffMin": {
           "type": "number",
           "label": "Mindestpause Min",
-          "newLine": true,
-          "step": 1
+          "newLine": true
         }
       }
     },
@@ -308,20 +294,17 @@
         "heatpumpPvMinFeedInW": {
           "type": "number",
           "label": "Min PV Einspeisung W",
-          "newLine": true,
-          "step": 1
+          "newLine": true
         },
         "heatpumpMinBatterySoc": {
           "type": "number",
           "label": "Min Batterie SoC %",
-          "newLine": true,
-          "step": 1
+          "newLine": true
         },
         "heatpumpBatteryFullSoc": {
           "type": "number",
           "label": "Akku voll ab %",
-          "newLine": true,
-          "step": 1
+          "newLine": true
         }
       }
     },
@@ -329,16 +312,11 @@
       "type": "panel",
       "label": "STATUS",
       "items": {
-        "statusHint1": {
+        "statusInfo": {
           "type": "text",
-          "label": "Hinweis",
+          "label": "Live-Werte findest du unter poolsteuerung.0.status.*",
           "newLine": true,
-          "disabled": true
-        },
-        "statusHint2": {
-          "type": "text",
-          "label": "Live-Werte unter poolsteuerung.0.status.*",
-          "newLine": true,
+          "help": "Nur Hinweis",
           "disabled": true
         }
       }
@@ -347,16 +325,11 @@
       "type": "panel",
       "label": "DIAGNOSE",
       "items": {
-        "diagHint1": {
+        "diagInfo": {
           "type": "text",
-          "label": "Hinweis",
+          "label": "F\u00fcr Tests debugMode=true und simulateMode=true",
           "newLine": true,
-          "disabled": true
-        },
-        "diagHint2": {
-          "type": "text",
-          "label": "F\u00fcr Tests: debugMode=true und simulateMode=true",
-          "newLine": true,
+          "help": "Nur Hinweis",
           "disabled": true
         }
       }

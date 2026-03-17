@@ -1,6 +1,6 @@
 {
   "name": "iobroker.poolsteuerung",
-  "version": "0.2.3",
+  "version": "0.2.6-clean",
   "description": "Pool automation adapter",
   "main": "build/main.js",
   "license": "MIT",

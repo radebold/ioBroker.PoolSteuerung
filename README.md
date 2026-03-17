@@ -1,1 +1,1 @@
-poolsteuerung 0.2.3
+Clean runtime package for ioBroker poolsteuerung

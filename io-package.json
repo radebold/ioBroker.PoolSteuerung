@@ -2,7 +2,7 @@
   "common": {
     "name": "poolsteuerung",
     "title": "Poolsteuerung",
-    "version": "0.2.5-simplefix",
+    "version": "0.2.6-clean",
     "icon": "poolsteuerung.png",
     "mode": "daemon",
     "type": "hardware",
@@ -18,9 +18,9 @@
     "debugMode": true,
     "simulateMode": false,
     "pollIntervalMin": 5,
-    "poolDiameterM": 4.6,
-    "poolWaterHeightM": 1.1,
-    "poolVolumeM3": 18.28,
+    "poolDiameterM": "4.60",
+    "poolWaterHeightM": "1.10",
+    "poolVolumeM3": "18.28",
     "phStateId": "",
     "phDoseEnableStateId": "",
     "phPumpSocketStateId": "",
@@ -67,5 +67,7 @@
     "heatpumpPvMinFeedInW": 1500,
     "heatpumpMinBatterySoc": 95,
     "heatpumpBatteryFullSoc": 98
-  }
+  },
+  "objects": [],
+  "instanceObjects": []
 }
