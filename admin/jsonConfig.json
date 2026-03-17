@@ -13,7 +13,12 @@
         },
         "i1": {
           "type": "staticText",
-          "text": "Durchmesser und Wasserh\u00f6he bestimmen automatisch das Poolvolumen. Nachkommastellen sind erlaubt."
+          "text": "Durchmesser und Wasserh\u00f6he bestimmen das Poolvolumen. Nachkommastellen sind erlaubt.",
+          "style": {
+            "opacity": 0.8,
+            "fontSize": 12,
+            "paddingBottom": 8
+          }
         },
         "poolDiameterM": {
           "type": "number",
@@ -403,7 +408,12 @@
         },
         "i1": {
           "type": "staticText",
-          "text": "Live-Werte findest du unter poolsteuerung.0.status.* im Objektbaum."
+          "text": "Live-Werte findest du unter poolsteuerung.0.status.* im Objektbaum.",
+          "style": {
+            "opacity": 0.8,
+            "fontSize": 12,
+            "paddingBottom": 8
+          }
         }
       }
     },
@@ -418,7 +428,12 @@
         },
         "i1": {
           "type": "staticText",
-          "text": "Nutze f\u00fcr Tests debugMode=true und simulateMode=true."
+          "text": "Nutze f\u00fcr Tests debugMode=true und simulateMode=true.",
+          "style": {
+            "opacity": 0.8,
+            "fontSize": 12,
+            "paddingBottom": 8
+          }
         }
       }
     }

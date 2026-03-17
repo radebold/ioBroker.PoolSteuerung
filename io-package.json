@@ -2,7 +2,7 @@
   "common": {
     "name": "poolsteuerung",
     "title": "Poolsteuerung",
-    "version": "0.2.3",
+    "version": "0.2.4-uihotfix",
     "icon": "poolsteuerung.png",
     "mode": "daemon",
     "type": "hardware",
@@ -10,15 +10,7 @@
     "materializeTab": true,
     "adminUI": {
       "config": "json"
-    }
-  },
-  "native": {
-    "adapterEnabled": true,
-    "debugMode": true,
-    "simulateMode": false,
-    "pollIntervalMin": 5,
-    "poolDiameterM": 4.6,
-    "poolWaterHeightM": 1.1,
-    "poolVolumeM3": 18.28
+    },
+    "loglevel": "info"
   }
 }
