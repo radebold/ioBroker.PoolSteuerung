@@ -106,146 +106,66 @@ class Poolsteuerung extends utils.Adapter {
       this.statusItemHtml('Wärmepumpe', 'Solar / Batterie', data.heatpumpOn, false),
     ].join('');
 
-    return `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><meta name="viewport" content="width=980,height=730">
+    return `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <style>
 :root{
-  --bg:#07101c;
-  --panel:#0f1b2d;
-  --panel2:#14253d;
-  --line:rgba(255,255,255,.08);
-  --lineSoft:rgba(255,255,255,.05);
-  --text:#f8fafc;
-  --muted:#96a8c3;
-  --accent:#56c7ff;
-  --accentSoft:rgba(86,199,255,.12);
-  --ok:#22c55e;
-  --ok2:#34d399;
-  --off:#ef4444;
-  --off2:#f87171;
-  --shadow:0 18px 40px rgba(0,0,0,.34);
+  --bg:#07101c;--panel:#0f1b2d;--panel2:#14253d;--line:rgba(255,255,255,.08);--lineSoft:rgba(255,255,255,.05);
+  --text:#f8fafc;--muted:#96a8c3;--accent:#56c7ff;--accentSoft:rgba(86,199,255,.12);
+  --ok:#22c55e;--ok2:#34d399;--off:#ef4444;--off2:#f87171;--shadow:0 18px 40px rgba(0,0,0,.34);
 }
 *{box-sizing:border-box}
 body{
-  margin:0;
-  color:var(--text);
-  font-family:Arial,Helvetica,sans-serif;
+  margin:0;color:var(--text);font-family:Arial,Helvetica,sans-serif;
   background:
     radial-gradient(circle at top left, rgba(35,99,170,.26) 0%, rgba(14,25,42,0) 34%),
     radial-gradient(circle at bottom right, rgba(12,94,154,.20) 0%, rgba(7,16,28,0) 26%),
     linear-gradient(180deg,#091321 0%,#07101c 100%);
 }
-.wrap{width:980px;height:730px;padding:16px;overflow:hidden}
-.grid{
-  display:grid;
-  grid-template-columns:410px 245px 277px;
-  gap:16px;
-  height:100%;
-}
+.wrap{width:100%;height:730px;padding:16px;overflow:hidden}
+.grid{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:16px;height:100%}
 .card{
-  position:relative;
+  position:relative;display:flex;flex-direction:column;
   background:linear-gradient(180deg,rgba(15,27,45,.98),rgba(20,37,61,.98));
-  border:1px solid var(--line);
-  border-radius:26px;
-  padding:18px;
-  box-shadow:var(--shadow);
+  border:1px solid var(--line);border-radius:26px;padding:18px;box-shadow:var(--shadow);min-width:0;
 }
 .heroHeader{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .title{font-size:20px;font-weight:700;letter-spacing:.2px}
 .sub{font-size:12px;color:var(--muted);text-align:right;white-space:nowrap}
 .badge{
-  display:inline-flex;align-items:center;gap:8px;
-  margin-top:12px;
-  padding:8px 12px;
-  border-radius:999px;
-  border:1px solid rgba(86,199,255,.22);
-  background:var(--accentSoft);
-  color:#8bd9ff;
-  font-size:12px;
-  width:max-content;
+  display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:8px 12px;border-radius:999px;
+  border:1px solid rgba(86,199,255,.22);background:var(--accentSoft);color:#8bd9ff;font-size:12px;width:max-content;
 }
 .tempRow{display:flex;align-items:flex-end;gap:8px;margin:18px 0 14px}
-.tempMain{
-  font-size:98px;
-  font-weight:800;
-  line-height:.9;
-  letter-spacing:-2px;
-  text-shadow:0 3px 18px rgba(255,255,255,.08);
-}
-.unit{
-  font-size:30px;
-  color:var(--muted);
-  font-weight:600;
-  padding-bottom:12px;
-}
-.metricGrid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:12px;
-}
+.tempMain{font-size:98px;font-weight:800;line-height:.9;letter-spacing:-2px;text-shadow:0 3px 18px rgba(255,255,255,.08)}
+.unit{font-size:30px;color:var(--muted);font-weight:600;padding-bottom:12px}
+.metricGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:auto}
 .metric{
   background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.02));
-  border:1px solid var(--lineSoft);
-  border-radius:18px;
-  padding:14px;
-  min-height:98px;
+  border:1px solid var(--lineSoft);border-radius:18px;padding:14px;min-height:98px;
 }
-.metric .k{
-  font-size:13px;
-  color:var(--muted);
-  margin-bottom:8px;
-}
-.metric .v{
-  font-size:24px;
-  font-weight:700;
-}
+.metric .k{font-size:13px;color:var(--muted);margin-bottom:8px}
+.metric .v{font-size:24px;font-weight:700}
 .energyList,.statusWrap{display:grid;gap:10px;margin-top:12px}
 .energyRow,.statusItem{
-  display:grid;
-  grid-template-columns:1fr auto;
-  align-items:center;
+  display:grid;grid-template-columns:1fr auto;align-items:center;
   background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.02));
-  border:1px solid var(--lineSoft);
-  border-radius:18px;
-  padding:12px 14px;
+  border:1px solid var(--lineSoft);border-radius:18px;padding:12px 14px;min-width:0;
 }
 .energyRow{min-height:58px}
 .statusItem{min-height:74px}
-.energyRow .k,.statusHint{
-  font-size:12px;
-  color:var(--muted);
-}
+.energyRow .k,.statusHint{font-size:12px;color:var(--muted)}
 .energyRow .v{
-  font-size:18px;
-  font-weight:700;
-  text-align:right;
-  max-width:126px;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
+  font-size:18px;font-weight:700;text-align:right;max-width:126px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.statusName{
-  font-size:17px;
-  font-weight:700;
-  margin-bottom:4px;
-}
+.statusName{font-size:17px;font-weight:700;margin-bottom:4px}
 .pill{
-  min-width:84px;
-  text-align:center;
-  padding:9px 12px;
-  border-radius:999px;
-  font-size:13px;
-  font-weight:800;
-  color:#fff;
+  min-width:84px;text-align:center;padding:9px 12px;border-radius:999px;font-size:13px;font-weight:800;color:#fff;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.16);
 }
 .on{background:linear-gradient(180deg,var(--ok2),var(--ok))}
 .off{background:linear-gradient(180deg,var(--off2),var(--off))}
 .cardGlow:before{
-  content:'';
-  position:absolute;inset:0;
-  border-radius:26px;
-  pointer-events:none;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+  content:'';position:absolute;inset:0;border-radius:26px;pointer-events:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
 }
 .smallIcon{opacity:.92;margin-right:6px}
 </style></head><body><div class="wrap"><div class="grid">
