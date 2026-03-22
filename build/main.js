@@ -145,7 +145,7 @@ class Poolsteuerung extends utils.Adapter {
   <div class="title" style="font-size:24px">Aktoren</div>
   <div class="status">${status}</div>
 </div>
-</div></div></body></html>`;
+</div></div>${debugInfo}</body></html>`;
   }
 
   buildPhoneHtml(data) {
@@ -191,7 +191,7 @@ class Poolsteuerung extends utils.Adapter {
   <div class="h1" style="font-size:20px">Aktoren</div>
   ${status}
 </div>
-</div></body></html>`;
+</div>${debugInfo}</body></html>`;
   }
 
   async updateComputedStates() {
