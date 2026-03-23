@@ -204,7 +204,7 @@ class Poolsteuerung extends utils.Adapter {
   buildTabletWidget(data) {
     const btn = (id, on) =>
       id
-        ? `<button class="ps-btn" onclick="vis.setValue('${esc(id)}', ${on ? 'false' : 'true'})">${on ? 'Ausschalten' : 'Einschalten'}</button>`
+        ? `<button class="ps-btn" onclick="(window.parent&&window.parent.vis&&typeof window.parent.vis.setValue==='function'?window.parent.vis:vis).setValue('${esc(id)}', ${on ? 'false' : 'true'})">${on ? 'Ausschalten' : 'Einschalten'}</button>`
         : '';
 
     const item = (name, hint, on, id) => `
