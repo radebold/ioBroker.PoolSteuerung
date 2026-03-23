@@ -204,7 +204,7 @@ class Poolsteuerung extends utils.Adapter {
   buildTabletWidget(data) {
     const btn = (id, on) =>
       id
-        ? `<button class="ps-btn" onclick="(window.parent&&window.parent.vis&&typeof window.parent.vis.setValue==='function'?window.parent.vis:vis).setValue('${esc(id)}', ${on ? 'false' : 'true'})">${on ? 'Ausschalten' : 'Einschalten'}</button>`
+        ? `<button class="ps-btn" onclick="vis.setValue('${esc(id)}', ${on ? 'false' : 'true'})">${on ? 'Ausschalten' : 'Einschalten'}</button>`
         : '';
 
     const item = (name, hint, on, id) => `
@@ -232,7 +232,7 @@ class Poolsteuerung extends utils.Adapter {
 .ps-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:auto}
 .ps-metric{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:12px;min-height:82px}
 .ps-k{font-size:12px;color:#9fb0c7;margin-bottom:8px}
-.ps-v{font-size:20px;font-weight:700;line-height:1.15}
+.ps-v{font-size:20px;font-weight:700;line-height:1.15}.ps-s{font-size:11px;color:#9fb0c7;margin-top:8px}
 .ps-list{display:grid;gap:8px;margin-top:10px}
 .ps-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:10px 12px;min-height:50px}
 .ps-row .ps-v{font-size:16px;white-space:nowrap}
@@ -256,12 +256,10 @@ class Poolsteuerung extends utils.Adapter {
       </div>
       <div class="ps-tempRow"><div class="ps-temp">${esc(data.poolTemp)}</div><div class="ps-unit">°C</div></div>
       <div class="ps-metrics">
-        <div class="ps-metric"><div class="ps-k">pH Ist</div><div class="ps-v">${esc(data.ph)}</div></div>
-        <div class="ps-metric"><div class="ps-k">ORP Ist</div><div class="ps-v">${esc(data.orp)}</div></div>
-        <div class="ps-metric"><div class="ps-k">Außen</div><div class="ps-v">${esc(data.outsideTemp)}°C</div></div>
-        <div class="ps-metric"><div class="ps-k">Solltemp</div><div class="ps-v">${esc(data.targetTemp)}°C</div></div>
-        <div class="ps-metric"><div class="ps-k">pH Soll</div><div class="ps-v">${esc(data.phSet)}</div></div>
-        <div class="ps-metric"><div class="ps-k">ORP Soll</div><div class="ps-v">${esc(data.orpSet)}</div></div>
+        <div class="ps-metric"><div class="ps-k">pH</div><div class="ps-v">${esc(data.ph)}</div><div class="ps-s">Soll ${esc(data.phSet)}</div></div>
+        <div class="ps-metric"><div class="ps-k">ORP</div><div class="ps-v">${esc(data.orp)}</div><div class="ps-s">Soll ${esc(data.orpSet)}</div></div>
+        <div class="ps-metric"><div class="ps-k">Außen</div><div class="ps-v">${esc(data.outsideTemp)}°C</div><div class="ps-s">&nbsp;</div></div>
+        <div class="ps-metric"><div class="ps-k">Solltemp</div><div class="ps-v">${esc(data.targetTemp)}°C</div><div class="ps-s">Heizen bis Soll</div></div>
       </div>
     </div>
     <div class="ps-card">
