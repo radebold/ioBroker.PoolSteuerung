@@ -202,41 +202,50 @@ class Poolsteuerung extends utils.Adapter {
 
 
   buildTabletWidget(data) {
-    const statusItem = (name, hint, state) => `
+    const btn = (id, on) =>
+      id
+        ? `<button class="ps-btn" onclick="vis.setValue('${esc(id)}', ${on ? 'false' : 'true'})">${on ? 'Ausschalten' : 'Einschalten'}</button>`
+        : '';
+
+    const item = (name, hint, on, id) => `
       <div class="ps-status">
-        <div class="ps-status-text">
+        <div>
           <div class="ps-status-name">${esc(name)}</div>
           <div class="ps-status-hint">${esc(hint)}</div>
+          <div class="ps-btnrow">${btn(id, on)}</div>
         </div>
-        <div class="ps-pill ${state ? 'on' : 'off'}">${state ? 'EIN' : 'AUS'}</div>
+        <div class="ps-pill ${on ? 'on' : 'off'}">${on ? 'EIN' : 'AUS'}</div>
       </div>`;
 
     return `
 <style>
 .ps-root,*{box-sizing:border-box}
-.ps-root{width:100%;height:100%;padding:12px;color:#f8fafc;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#091321 0%,#08111c 100%)}
-.ps-grid{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:12px;height:100%}
+.ps-root{width:100%;height:100%;padding:10px;color:#f8fafc;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#091321 0%,#08111c 100%)}
+.ps-grid{display:grid;grid-template-columns:1.18fr .9fr .95fr;gap:12px;height:100%}
 .ps-card{display:flex;flex-direction:column;min-width:0;background:linear-gradient(180deg,rgba(15,27,45,.98),rgba(19,36,58,.98));border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:16px}
 .ps-header{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
 .ps-title{font-size:18px;font-weight:700}
 .ps-sub{font-size:11px;color:#9fb0c7;text-align:right}
-.ps-tempRow{display:flex;align-items:flex-end;gap:8px;margin:14px 0 12px}
-.ps-temp{font-size:82px;font-weight:800;line-height:.9}
-.ps-unit{font-size:24px;color:#9fb0c7;padding-bottom:10px}
+.ps-tempRow{display:flex;align-items:flex-end;gap:8px;margin:12px 0 12px}
+.ps-temp{font-size:80px;font-weight:800;line-height:.9}
+.ps-unit{font-size:22px;color:#9fb0c7;padding-bottom:10px}
 .ps-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:auto}
-.ps-metric{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:12px;min-height:86px}
+.ps-metric{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:12px;min-height:82px}
 .ps-k{font-size:12px;color:#9fb0c7;margin-bottom:8px}
-.ps-v{font-size:22px;font-weight:700;line-height:1.15}
+.ps-v{font-size:20px;font-weight:700;line-height:1.15}
 .ps-list{display:grid;gap:8px;margin-top:10px}
-.ps-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:10px 12px;min-height:52px}
-.ps-row .ps-v{font-size:17px;white-space:nowrap}
+.ps-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:10px 12px;min-height:50px}
+.ps-row .ps-v{font-size:16px;white-space:nowrap}
 .ps-statuswrap{display:grid;gap:10px;margin-top:10px}
-.ps-status{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:10px 12px;min-height:70px}
-.ps-status-name{font-size:16px;font-weight:700}
+.ps-status{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:10px 12px;min-height:82px}
+.ps-status-name{font-size:15px;font-weight:700}
 .ps-status-hint{font-size:11px;color:#9fb0c7;margin-top:3px}
 .ps-pill{min-width:78px;text-align:center;padding:8px 10px;border-radius:999px;font-size:12px;font-weight:800;color:#fff}
 .ps-pill.on{background:linear-gradient(180deg,#34d399,#22c55e)}
 .ps-pill.off{background:linear-gradient(180deg,#f87171,#ef4444)}
+.ps-btnrow{margin-top:8px}
+.ps-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#fff;border-radius:10px;padding:6px 10px;font-size:11px;cursor:pointer}
+.ps-btn:hover{background:rgba(255,255,255,.14)}
 </style>
 <div class="ps-root">
   <div class="ps-grid">
@@ -247,10 +256,12 @@ class Poolsteuerung extends utils.Adapter {
       </div>
       <div class="ps-tempRow"><div class="ps-temp">${esc(data.poolTemp)}</div><div class="ps-unit">°C</div></div>
       <div class="ps-metrics">
-        <div class="ps-metric"><div class="ps-k">pH</div><div class="ps-v">${esc(data.ph)}</div></div>
-        <div class="ps-metric"><div class="ps-k">ORP</div><div class="ps-v">${esc(data.orp)}</div></div>
+        <div class="ps-metric"><div class="ps-k">pH Ist</div><div class="ps-v">${esc(data.ph)}</div></div>
+        <div class="ps-metric"><div class="ps-k">ORP Ist</div><div class="ps-v">${esc(data.orp)}</div></div>
         <div class="ps-metric"><div class="ps-k">Außen</div><div class="ps-v">${esc(data.outsideTemp)}°C</div></div>
         <div class="ps-metric"><div class="ps-k">Solltemp</div><div class="ps-v">${esc(data.targetTemp)}°C</div></div>
+        <div class="ps-metric"><div class="ps-k">pH Soll</div><div class="ps-v">${esc(data.phSet)}</div></div>
+        <div class="ps-metric"><div class="ps-k">ORP Soll</div><div class="ps-v">${esc(data.orpSet)}</div></div>
       </div>
     </div>
     <div class="ps-card">
@@ -267,10 +278,10 @@ class Poolsteuerung extends utils.Adapter {
     <div class="ps-card">
       <div class="ps-title">Aktoren</div>
       <div class="ps-statuswrap">
-        ${statusItem('Umwälzpumpe','Grundlauf / Zeitfenster',data.pumpOn)}
-        ${statusItem('Chlorinator','ORP-Regelung',data.chlorOn)}
-        ${statusItem('pH-Dosierpumpe','Automatik / manuell',data.phPumpOn)}
-        ${statusItem('Wärmepumpe','Solar / Batterie',data.heatpumpOn)}
+        ${item('Umwälzpumpe','Grundlauf / Zeitfenster',data.pumpOn,data.ids.pump)}
+        ${item('Chlorinator','ORP-Regelung',data.chlorOn,data.ids.chlor)}
+        ${item('pH-Dosierpumpe','Automatik / manuell',data.phPumpOn,data.ids.ph)}
+        ${item('Wärmepumpe','Solar / Batterie',data.heatpumpOn,data.ids.heat)}
       </div>
     </div>
   </div>
@@ -278,30 +289,9 @@ class Poolsteuerung extends utils.Adapter {
   }
 
   buildPhoneWidget(data) {
-    return `
-<style>
-.pp-root,*{box-sizing:border-box}
-.pp-root{width:100%;height:100%;padding:10px;color:#f8fafc;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#091321 0%,#08111c 100%)}
-.pp-card{background:linear-gradient(180deg,rgba(15,27,45,.98),rgba(19,36,58,.98));border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:12px;margin-bottom:10px}
-.pp-title{font-size:18px;font-weight:700}.pp-sub{font-size:11px;color:#9fb0c7;margin-top:4px}
-.pp-temp{font-size:58px;font-weight:800;line-height:1;margin:10px 0}
-.pp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.pp-box{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:10px}
-.pp-k{font-size:11px;color:#9fb0c7;margin-bottom:6px}.pp-v{font-size:22px;font-weight:700}
-</style>
-<div class="pp-root">
-  <div class="pp-card">
-    <div class="pp-title">Poolsteuerung</div>
-    <div class="pp-sub">Aktualisiert: ${esc(data.updated)}</div>
-    <div class="pp-temp">${esc(data.poolTemp)}°C</div>
-    <div class="pp-grid">
-      <div class="pp-box"><div class="pp-k">pH</div><div class="pp-v">${esc(data.ph)}</div></div>
-      <div class="pp-box"><div class="pp-k">ORP</div><div class="pp-v">${esc(data.orp)}</div></div>
-      <div class="pp-box"><div class="pp-k">Außen</div><div class="pp-v">${esc(data.outsideTemp)}°C</div></div>
-      <div class="pp-box"><div class="pp-k">Soll</div><div class="pp-v">${esc(data.targetTemp)}°C</div></div>
-    </div>
-  </div>
-</div>`;
+    return `<div style="padding:10px;color:#fff;background:#08111c;font-family:Arial">
+      ${esc(data.poolTemp)}°C | pH ${esc(data.ph)} | ORP ${esc(data.orp)} | pH Soll ${esc(data.phSet)} | ORP Soll ${esc(data.orpSet)}
+    </div>`;
   }
 
   async renderVis() {
@@ -329,19 +319,10 @@ class Poolsteuerung extends utils.Adapter {
     const tablet = this.buildTabletHtml(data);
     const phone = this.buildPhoneHtml(data);
 
-    const tabletWidget = this.buildTabletWidget(data);
-    const phoneWidget = this.buildPhoneWidget(data);
-
     await this.ensureState('vis.htmlTablet', 'string', 'html', '', false);
     await this.ensureState('vis.htmlPhone', 'string', 'html', '', false);
-    await this.ensureState('vis.widgetTablet', 'string', 'html', '', false);
-    await this.ensureState('vis.widgetPhone', 'string', 'html', '', false);
-
     await this.setStateAsync('vis.htmlTablet', tablet, true);
     await this.setStateAsync('vis.htmlPhone', phone, true);
-    await this.setStateAsync('vis.widgetTablet', tabletWidget, true);
-    await this.setStateAsync('vis.widgetPhone', phoneWidget, true);
-
     await this.ensureState('status.debug.lastVisUpdate', 'string', 'text', '', false);
     await this.setStateAsync('status.debug.lastVisUpdate', data.updated, true);
   }

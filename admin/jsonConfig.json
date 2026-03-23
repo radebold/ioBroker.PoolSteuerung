@@ -66,6 +66,11 @@
           "type": "text",
           "label": "Dosierpumpe",
           "newLine": true
+        },
+        "phSetpoint": {
+          "type": "number",
+          "label": "pH Sollwert",
+          "newLine": true
         }
       }
     },
@@ -81,6 +86,11 @@
         "chlorinatorSocketStateId": {
           "type": "text",
           "label": "Chlorinator",
+          "newLine": true
+        },
+        "orpSetpoint": {
+          "type": "number",
+          "label": "ORP Sollwert",
           "newLine": true
         }
       }
