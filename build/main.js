@@ -268,6 +268,7 @@ class Poolsteuerung extends utils.Adapter {
         <div class="ps-row"><div class="ps-k">Pumpe Zeitplan</div><div class="ps-v">${esc(data.pumpDecision)}</div></div>
         <div class="ps-row"><div class="ps-k">pH Prüfung</div><div class="ps-v">${esc(data.phDecision)}</div></div>
         <div class="ps-row"><div class="ps-k">pH Zeiten</div><div class="ps-v">${esc(data.phTimes)}</div></div>
+        <div class="ps-row"><div class="ps-k">pH Tag</div><div class="ps-v">${esc(data.phDailyCount)}</div></div>
         <div class="ps-row"><div class="ps-k">Poolvolumen</div><div class="ps-v">${esc(data.volume)} m³</div></div>
       </div>
     </div>
@@ -301,6 +302,7 @@ class Poolsteuerung extends utils.Adapter {
     const heatReason = await this.getText('poolsteuerung.0.status.heatpump.lastReason', '--');
     const pumpDecision = await this.getText('poolsteuerung.0.status.debug.lastPumpDecision', '--');
     const phDecision = await this.getText('poolsteuerung.0.status.debug.lastPhDecision', '--');
+    const phDailyCount = await this.getText('poolsteuerung.0.status.phDose.dailyCount', '0');
     const volume = this.fmt(this.calcVolume(), 2, '--');
 
     const pumpOn = await this.getBool(this.config.circulationPumpSocketStateId);
@@ -359,6 +361,7 @@ class Poolsteuerung extends utils.Adapter {
       phTimes: this.config.phCheckTimes || '-',
       pumpDecision,
       phDecision,
+      phDailyCount,
       orpSet: this.fmt(parseNum(this.config.orpSetpoint), 0, '--'),
       threshold: this.fmt(threshold, 0, '1000'),
       orpOnThreshold: this.fmt(orpOnThreshold, 0, '725'),
@@ -486,6 +489,53 @@ class Poolsteuerung extends utils.Adapter {
     return list.includes(current);
   }
 
+
+  getTodayKey(now = new Date()) {
+    return now.toISOString().slice(0, 10);
+  }
+
+  async getTodayDoseCount(now = new Date()) {
+    await this.ensureState('status.phDose.dayKey', 'string', 'text', '', false);
+    await this.ensureState('status.phDose.dailyCount', 'number', 'value', 0, false);
+    const dayKeyState = await this.getStateAsync('status.phDose.dayKey');
+    const countState = await this.getStateAsync('status.phDose.dailyCount');
+    const today = this.getTodayKey(now);
+    let count = Number(countState && countState.val) || 0;
+    if (!dayKeyState || dayKeyState.val !== today) {
+      count = 0;
+      await this.setStateAsync('status.phDose.dayKey', today, true);
+      await this.setStateAsync('status.phDose.dailyCount', 0, true);
+    }
+    return count;
+  }
+
+  async incrementTodayDoseCount(now = new Date()) {
+    const count = await this.getTodayDoseCount(now);
+    await this.setStateAsync('status.phDose.dayKey', this.getTodayKey(now), true);
+    await this.setStateAsync('status.phDose.dailyCount', count + 1, true);
+    return count + 1;
+  }
+
+  async runDosePumpOnce(seconds) {
+    const pumpId = this.config.phPumpSocketStateId;
+    if (!pumpId || seconds <= 0) return false;
+    if (this.config.simulateMode) return true;
+    try {
+      await this.setForeignStateAsync(pumpId, true, false);
+      setTimeout(async () => {
+        try {
+          await this.setForeignStateAsync(pumpId, false, false);
+        } catch (e) {
+          this.log.warn('Dosierpumpe konnte nicht ausgeschaltet werden: ' + e.message);
+        }
+      }, seconds * 1000);
+      return true;
+    } catch (e) {
+      this.log.warn('Dosierpumpe konnte nicht eingeschaltet werden: ' + e.message);
+      return false;
+    }
+  }
+
   async applyControlLogic() {
     const now = new Date();
     const pumpId = this.config.circulationPumpSocketStateId;
@@ -507,10 +557,20 @@ class Poolsteuerung extends utils.Adapter {
 
     const phValue = await this.getNumber(this.config.phStateId, 2);
     const phSet = parseNum(this.config.phSetpoint || 7.2);
+    const phTolerance = parseNum(this.config.phDoseTolerance || 0.05);
     const phEnabled = this.config.phDoseEnableStateId ? await this.getBool(this.config.phDoseEnableStateId) : true;
     const phPumpId = this.config.phPumpSocketStateId;
     const phPumpCurrent = await this.getBool(phPumpId);
-    let phTarget = false;
+    const doseDurationSec = Math.max(1, parseNum(this.config.phDoseDurationSec || 30));
+    const doseLockMinutes = Math.max(0, parseNum(this.config.phDoseLockMinutes || 60));
+    const doseMaxPerDay = Math.max(1, parseNum(this.config.phDoseMaxPerDay || 4));
+    await this.ensureState('status.phDose.lastDoseTs', 'number', 'value.time', 0, false);
+    const lastDoseState = await this.getStateAsync('status.phDose.lastDoseTs');
+    const lastDoseTs = Number(lastDoseState && lastDoseState.val) || 0;
+    const nowMs = now.getTime();
+    const lockRemainingMs = Math.max(0, (lastDoseTs + doseLockMinutes * 60000) - nowMs);
+    const dailyCount = await this.getTodayDoseCount(now);
+
     let phDecision = 'keine Prüfung';
     if (!phEnabled) {
       phDecision = 'pH Freigabe AUS';
@@ -520,22 +580,22 @@ class Poolsteuerung extends utils.Adapter {
       phDecision = `warte auf Prüfzeit (${this.config.phCheckTimes || '-'})`;
     } else if (phValue === null || !Number.isFinite(phValue)) {
       phDecision = 'pH ungültig';
-    } else if (phValue <= phSet) {
-      phDecision = `pH OK (${phValue} <= ${phSet})`;
+    } else if (dailyCount >= doseMaxPerDay) {
+      phDecision = `Tageslimit erreicht (${dailyCount}/${doseMaxPerDay})`;
+    } else if (lockRemainingMs > 0) {
+      phDecision = `Sperrzeit aktiv (${Math.ceil(lockRemainingMs / 60000)} min)`;
+    } else if (phValue <= (phSet + phTolerance)) {
+      phDecision = `pH OK (${phValue} <= ${this.fmt(phSet + phTolerance, 2, '--')})`;
+    } else if (phPumpCurrent) {
+      phDecision = 'Dosierpumpe läuft bereits';
     } else {
-      phTarget = true;
-      phDecision = `Prüfzeit aktiv: pH über Soll (${phValue} > ${phSet})`;
-    }
-
-    if (phPumpId && phPumpCurrent !== phTarget) {
-      if (this.config.simulateMode) {
-        phDecision += ' | würde schalten (Simulationsmodus)';
+      const ok = await this.runDosePumpOnce(doseDurationSec);
+      if (ok) {
+        await this.setStateAsync('status.phDose.lastDoseTs', nowMs, true);
+        const newCount = await this.incrementTodayDoseCount(now);
+        phDecision = `${this.config.simulateMode ? 'würde dosieren' : 'dosiert'} ${doseDurationSec}s | pH ${phValue} > ${phSet}+${phTolerance} | Tag ${newCount}/${doseMaxPerDay}`;
       } else {
-        try {
-          await this.setForeignStateAsync(phPumpId, phTarget, false);
-        } catch (e) {
-          phDecision += ` | Schaltfehler: ${e.message || e}`;
-        }
+        phDecision = 'Dosierung fehlgeschlagen';
       }
     }
 

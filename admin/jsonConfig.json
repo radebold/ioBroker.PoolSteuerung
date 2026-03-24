@@ -77,6 +77,30 @@
           "label": "pH Pr\u00fcfzeiten",
           "newLine": true,
           "help": "z. B. 11:00,15:00. Nur zu diesen Zeiten wird pH bewertet."
+        },
+        "phDoseTolerance": {
+          "type": "number",
+          "label": "pH Toleranz \u00fcber Soll",
+          "newLine": true,
+          "help": "Erst wenn pH gr\u00f6\u00dfer als Soll + Toleranz ist, wird dosiert."
+        },
+        "phDoseDurationSec": {
+          "type": "number",
+          "label": "Dosierdauer je Zyklus (Sekunden)",
+          "newLine": true,
+          "help": "Laufzeit der Dosierpumpe pro aktivem Pr\u00fcfzeitpunkt."
+        },
+        "phDoseLockMinutes": {
+          "type": "number",
+          "label": "Sperrzeit nach Dosierung (Minuten)",
+          "newLine": true,
+          "help": "Nach einer Dosierung wird bis zum Ablauf dieser Zeit nicht erneut dosiert."
+        },
+        "phDoseMaxPerDay": {
+          "type": "number",
+          "label": "Max. Dosierungen pro Tag",
+          "newLine": true,
+          "help": "Sicherheitsgrenze pro Kalendertag."
         }
       }
     },
