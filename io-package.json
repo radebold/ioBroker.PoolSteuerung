@@ -2,7 +2,7 @@
   "common": {
     "name": "poolsteuerung",
     "title": "Poolsteuerung",
-    "version": "0.3.9-beta27",
+    "version": "0.3.9-beta28",
     "icon": "poolsteuerung.png",
     "mode": "daemon",
     "type": "hardware",
@@ -27,6 +27,8 @@
     "phDoseTolerance": 0.05,
     "phDoseDurationSec": 30,
     "phDoseLockMinutes": 60,
-    "phDoseMaxPerDay": 4
+    "phDoseMaxPerDay": 4,
+    "phDoseSecondsPer01Per10m3": 30,
+    "phDoseMaxDurationSec": 180
   }
 }

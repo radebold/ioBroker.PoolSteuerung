@@ -101,6 +101,18 @@
           "label": "Max. Dosierungen pro Tag",
           "newLine": true,
           "help": "Sicherheitsgrenze pro Kalendertag."
+        },
+        "phDoseSecondsPer01Per10m3": {
+          "type": "number",
+          "label": "Sekunden pro 0,1 pH je 10 m\u00b3",
+          "newLine": true,
+          "help": "Grundwert f\u00fcr die Laufzeitberechnung. Beispiel: 30 bedeutet 30s je 0,1 pH Abweichung bei 10 m\u00b3."
+        },
+        "phDoseMaxDurationSec": {
+          "type": "number",
+          "label": "Max. Dosierdauer je Zyklus (Sekunden)",
+          "newLine": true,
+          "help": "Obergrenze f\u00fcr die berechnete Dosierdauer."
         }
       }
     },

@@ -269,6 +269,7 @@ class Poolsteuerung extends utils.Adapter {
         <div class="ps-row"><div class="ps-k">pH Prüfung</div><div class="ps-v">${esc(data.phDecision)}</div></div>
         <div class="ps-row"><div class="ps-k">pH Zeiten</div><div class="ps-v">${esc(data.phTimes)}</div></div>
         <div class="ps-row"><div class="ps-k">pH Tag</div><div class="ps-v">${esc(data.phDailyCount)}</div></div>
+        <div class="ps-row"><div class="ps-k">Letzte Dosierung</div><div class="ps-v">${esc(data.phLastDoseDurationSec)} s</div></div>
         <div class="ps-row"><div class="ps-k">Poolvolumen</div><div class="ps-v">${esc(data.volume)} m³</div></div>
       </div>
     </div>
@@ -303,6 +304,7 @@ class Poolsteuerung extends utils.Adapter {
     const pumpDecision = await this.getText('poolsteuerung.0.status.debug.lastPumpDecision', '--');
     const phDecision = await this.getText('poolsteuerung.0.status.debug.lastPhDecision', '--');
     const phDailyCount = await this.getText('poolsteuerung.0.status.phDose.dailyCount', '0');
+    const phLastDoseDurationSec = await this.getText('poolsteuerung.0.status.phDose.lastDoseDurationSec', '0');
     const volume = this.fmt(this.calcVolume(), 2, '--');
 
     const pumpOn = await this.getBool(this.config.circulationPumpSocketStateId);
@@ -362,6 +364,7 @@ class Poolsteuerung extends utils.Adapter {
       pumpDecision,
       phDecision,
       phDailyCount,
+      phLastDoseDurationSec,
       orpSet: this.fmt(parseNum(this.config.orpSetpoint), 0, '--'),
       threshold: this.fmt(threshold, 0, '1000'),
       orpOnThreshold: this.fmt(orpOnThreshold, 0, '725'),
@@ -516,6 +519,23 @@ class Poolsteuerung extends utils.Adapter {
     return count + 1;
   }
 
+
+  calcPhDoseDurationSec(phValue, phSet, tolerance) {
+    const delta = Number(phValue) - (Number(phSet) + Number(tolerance));
+    if (!Number.isFinite(delta) || delta <= 0) return 0;
+
+    const volume = this.calcVolume();
+    const baseSec = parseNum(this.config.phDoseSecondsPer01Per10m3 || 30);
+    const maxSec = Math.max(1, parseNum(this.config.phDoseMaxDurationSec || 180));
+
+    // Formel: Sekunden pro 0,1 pH bei 10 m³, skaliert auf Volumen und Abweichung
+    let sec = (delta / 0.1) * (volume / 10) * baseSec;
+    sec = Math.round(sec);
+
+    if (!Number.isFinite(sec) || sec < 0) return 0;
+    return Math.min(sec, maxSec);
+  }
+
   async runDosePumpOnce(seconds) {
     const pumpId = this.config.phPumpSocketStateId;
     if (!pumpId || seconds <= 0) return false;
@@ -561,15 +581,17 @@ class Poolsteuerung extends utils.Adapter {
     const phEnabled = this.config.phDoseEnableStateId ? await this.getBool(this.config.phDoseEnableStateId) : true;
     const phPumpId = this.config.phPumpSocketStateId;
     const phPumpCurrent = await this.getBool(phPumpId);
-    const doseDurationSec = Math.max(1, parseNum(this.config.phDoseDurationSec || 30));
+    const fallbackDoseDurationSec = Math.max(1, parseNum(this.config.phDoseDurationSec || 30));
     const doseLockMinutes = Math.max(0, parseNum(this.config.phDoseLockMinutes || 60));
     const doseMaxPerDay = Math.max(1, parseNum(this.config.phDoseMaxPerDay || 4));
     await this.ensureState('status.phDose.lastDoseTs', 'number', 'value.time', 0, false);
+    await this.ensureState('status.phDose.lastDoseDurationSec', 'number', 'value.interval', 0, false);
     const lastDoseState = await this.getStateAsync('status.phDose.lastDoseTs');
     const lastDoseTs = Number(lastDoseState && lastDoseState.val) || 0;
     const nowMs = now.getTime();
     const lockRemainingMs = Math.max(0, (lastDoseTs + doseLockMinutes * 60000) - nowMs);
     const dailyCount = await this.getTodayDoseCount(now);
+    const calcDoseSec = this.calcPhDoseDurationSec(phValue, phSet, phTolerance) || fallbackDoseDurationSec;
 
     let phDecision = 'keine Prüfung';
     if (!phEnabled) {
@@ -589,11 +611,12 @@ class Poolsteuerung extends utils.Adapter {
     } else if (phPumpCurrent) {
       phDecision = 'Dosierpumpe läuft bereits';
     } else {
-      const ok = await this.runDosePumpOnce(doseDurationSec);
+      const ok = await this.runDosePumpOnce(calcDoseSec);
       if (ok) {
         await this.setStateAsync('status.phDose.lastDoseTs', nowMs, true);
+        await this.setStateAsync('status.phDose.lastDoseDurationSec', calcDoseSec, true);
         const newCount = await this.incrementTodayDoseCount(now);
-        phDecision = `${this.config.simulateMode ? 'würde dosieren' : 'dosiert'} ${doseDurationSec}s | pH ${phValue} > ${phSet}+${phTolerance} | Tag ${newCount}/${doseMaxPerDay}`;
+        phDecision = `${this.config.simulateMode ? 'würde dosieren' : 'dosiert'} ${calcDoseSec}s | pH ${phValue} > ${phSet}+${phTolerance} | Tag ${newCount}/${doseMaxPerDay}`;
       } else {
         phDecision = 'Dosierung fehlgeschlagen';
       }
