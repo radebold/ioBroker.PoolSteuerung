@@ -113,6 +113,18 @@
           "label": "Max. Dosierdauer je Zyklus (Sekunden)",
           "newLine": true,
           "help": "Obergrenze f\u00fcr die berechnete Dosierdauer."
+        },
+        "phDoseMlPer01Per10m3": {
+          "type": "number",
+          "label": "ml pro 0,1 pH je 10 m\u00b3",
+          "newLine": true,
+          "help": "Alternative, realit\u00e4tsn\u00e4here Berechnung auf ml-Basis."
+        },
+        "phPumpFlowMlPerMin": {
+          "type": "number",
+          "label": "F\u00f6rdermenge Dosierpumpe (ml/min)",
+          "newLine": true,
+          "help": "Wird genutzt, um aus ml eine Laufzeit in Sekunden zu berechnen."
         }
       }
     },
