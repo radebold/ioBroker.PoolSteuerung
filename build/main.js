@@ -445,7 +445,14 @@ class Poolsteuerung extends utils.Adapter {
     }
   }
 
-  async onReady() {
+  
+  isPhCheckDue(now=new Date()){
+    const list=(this.config.phCheckTimes||"").split(",").map(v=>v.trim());
+    const cur=now.toTimeString().slice(0,5);
+    return list.includes(cur);
+  }
+
+async onReady() {
     await this.ensureState('info.connection', 'boolean', 'indicator.connected', false, false);
     await this.ensureState('status.debug.lastCycle', 'string', 'text', '', false);
     await this.setStateAsync('info.connection', true, true);

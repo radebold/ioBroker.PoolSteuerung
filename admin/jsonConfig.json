@@ -71,6 +71,12 @@
           "type": "number",
           "label": "pH Sollwert",
           "newLine": true
+        },
+        "phCheckTimes": {
+          "type": "text",
+          "label": "pH Pr\u00fcfzeiten",
+          "newLine": true,
+          "help": "z.B. 11:00,15:00"
         }
       }
     },
@@ -114,6 +120,26 @@
         "circulationPumpSocketStateId": {
           "type": "text",
           "label": "Umw\u00e4lzpumpe",
+          "newLine": true
+        },
+        "pumpWindow1Start": {
+          "type": "text",
+          "label": "Zeitfenster 1 Start",
+          "newLine": true
+        },
+        "pumpWindow1End": {
+          "type": "text",
+          "label": "Zeitfenster 1 Ende",
+          "newLine": true
+        },
+        "pumpWindow2Start": {
+          "type": "text",
+          "label": "Zeitfenster 2 Start",
+          "newLine": true
+        },
+        "pumpWindow2End": {
+          "type": "text",
+          "label": "Zeitfenster 2 Ende",
           "newLine": true
         }
       }
