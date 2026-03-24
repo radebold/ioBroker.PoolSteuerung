@@ -15,6 +15,7 @@ class Poolsteuerung extends utils.Adapter {
   lastPhoneWidget = '';
   lastSlowUpdate = 0;
   lastRenderSignature = '';
+  lastRenderAt = 0;
 
   constructor(options = {}) {
     super({ ...options, name: 'poolsteuerung' });
