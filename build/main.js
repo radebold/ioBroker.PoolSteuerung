@@ -10,6 +10,11 @@ function esc(s) {
 }
 
 class Poolsteuerung extends utils.Adapter {
+
+  lastTabletWidget = '';
+  lastPhoneWidget = '';
+  lastSlowUpdate = 0;
+
   constructor(options = {}) {
     super({ ...options, name: 'poolsteuerung' });
     this.timer = null;
@@ -305,7 +310,13 @@ class Poolsteuerung extends utils.Adapter {
       heatDecision = `PV OK (${feedIn}W > ${threshold}W)`;
     }
 
-    const data = {
+    const now = Date.now();
+if (now - this.lastSlowUpdate < 300000) {
+  // skip heavy refresh
+} else {
+  this.lastSlowUpdate = now;
+}
+const data = {
       updated: new Date().toLocaleString('de-DE'),
       ph, orp, poolTemp, outsideTemp, pv, feedIn, gridSupply, battery, targetTemp, heatReason, volume,
       phSet: this.fmt(parseNum(this.config.phSetpoint), 2, '--'),
@@ -329,8 +340,14 @@ class Poolsteuerung extends utils.Adapter {
     await this.ensureState('vis.widgetPhone', 'string', 'html', '', false);
     await this.setStateAsync('vis.htmlTablet', tablet, true);
     await this.setStateAsync('vis.htmlPhone', phone, true);
-    await this.setStateAsync('vis.widgetTablet', tabletWidget, true);
-    await this.setStateAsync('vis.widgetPhone', phoneWidget, true);
+    if (tabletWidget !== this.lastTabletWidget) {
+      await this.setStateAsync('vis.widgetTablet', tabletWidget, true);
+      this.lastTabletWidget = tabletWidget;
+    }
+    if (phoneWidget !== this.lastPhoneWidget) {
+      await this.setStateAsync('vis.widgetPhone', phoneWidget, true);
+      this.lastPhoneWidget = phoneWidget;
+    }
     await this.ensureState('status.debug.lastVisUpdate', 'string', 'text', '', false);
     await this.setStateAsync('status.debug.lastVisUpdate', data.updated, true);
     await this.ensureState('status.debug.lastDecision', 'string', 'text', '', false);
