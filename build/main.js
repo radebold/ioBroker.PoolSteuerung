@@ -9,7 +9,7 @@ function esc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-class Poolsteuerung extends utils.Adapter {
+class Pool Manager extends utils.Adapter {
 
   lastTabletWidget = '';
   lastPhoneWidget = '';
@@ -129,7 +129,7 @@ class Poolsteuerung extends utils.Adapter {
 .statusName{font-size:20px;font-weight:700}.statusHint{font-size:13px;color:var(--muted);margin-top:3px}.pill{min-width:96px;text-align:center;padding:10px 12px;border-radius:999px;font-size:15px;font-weight:700;color:#fff}.on{background:var(--ok)}.off{background:var(--off)}
 </style></head><body><div class="wrap"><div class="grid">
 <div class="card">
-  <div class="title">Poolsteuerung</div>
+  <div class="title">Pool Manager</div>
   <div class="sub">Aktualisiert: ${esc(data.updated)}</div>
   <div class="tempMain">${esc(data.poolTemp)} <span class="unit">°C</span></div>
   <div class="miniGrid">
@@ -176,7 +176,7 @@ class Poolsteuerung extends utils.Adapter {
 .pill{min-width:74px;text-align:center;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:700;color:#fff}.on{background:var(--ok)}.off{background:var(--off)}
 </style></head><body><div class="wrap">
 <div class="card">
-  <div class="h1">Poolsteuerung</div>
+  <div class="h1">Pool Manager</div>
   <div class="sub">Aktualisiert: ${esc(data.updated)}</div>
   <div class="temp">${esc(data.poolTemp)}°C</div>
   <div class="grid2">
@@ -289,7 +289,7 @@ class Poolsteuerung extends utils.Adapter {
   <div class="ps-grid">
     <div class="ps-card ps-hero">
       <div class="ps-header">
-        <div class="ps-title">Poolsteuerung</div>
+        <div class="ps-title">Pool Manager</div>
         <div class="ps-sub">Aktualisiert<br>${esc(data.updated)}</div>
       </div>
       <div class="ps-tempRow"><div class="ps-temp">${esc(data.poolTemp)}</div><div class="ps-unit">°C</div></div>
@@ -309,24 +309,24 @@ class Poolsteuerung extends utils.Adapter {
         <div class="ps-metric">
           <div class="ps-k">Außen</div>
           <div class="ps-v">${esc(data.outsideTemp)}°C</div>
-          <div class="ps-s">Lufttemperatur</div>
+          <div class="ps-s">Außentemperatur</div>
         </div>
         <div class="ps-metric">
           <div class="ps-k">Solltemp</div>
           <div class="ps-v">${esc(data.targetTemp)}°C</div>
-          <div class="ps-s">Heizen bis Soll</div>
+          <div class="ps-s">Zieltemperatur</div>
         </div>
       </div>
     </div>
     <div class="ps-card">
-      <div class="ps-title">Energie & Regelung</div>
+      <div class="ps-title">Energie & Steuerung</div>
       <div class="ps-list">
         <div class="ps-row"><div class="ps-k">PV-Leistung</div><div class="ps-v">${esc(data.pv)} W</div></div>
         <div class="ps-row"><div class="ps-k">Netzeinspeisung</div><div class="ps-v">${esc(data.feedIn)} W</div></div>
         <div class="ps-row"><div class="ps-k">Netzbezug</div><div class="ps-v">${esc(data.gridSupply)} W</div></div>
         <div class="ps-row"><div class="ps-k">Batterie SoC</div><div class="ps-v">${esc(data.battery)} %</div></div>
-        <div class="ps-row"><div class="ps-k">WP Entscheidung</div><div class="ps-v">${esc(data.heatDecision)}</div></div>
-        <div class="ps-row"><div class="ps-k">ORP Regelung</div><div class="ps-v">${esc(data.chlorDecision)}</div></div>
+        <div class="ps-row"><div class="ps-k">WP Freigabe</div><div class="ps-v">${esc(data.heatDecision)}</div></div>
+        <div class="ps-row"><div class="ps-k">Chlor Freigabe</div><div class="ps-v">${esc(data.chlorDecision)}</div></div>
         <div class="ps-row"><div class="ps-k">Pumpe Zeitplan</div><div class="ps-v">${esc(data.pumpDecision)}</div></div>
         <div class="ps-row"><div class="ps-k">pH Prüfung</div><div class="ps-v">${esc(data.phDecision)}</div></div>
         <div class="ps-row"><div class="ps-k">pH Zeiten</div><div class="ps-v">${esc(data.phTimes)}</div></div>
@@ -334,14 +334,15 @@ class Poolsteuerung extends utils.Adapter {
       </div>
     </div>
     <div class="ps-card">
-      <div class="ps-title">Aktoren & Pool</div>
+      <div class="ps-title">Aktoren & Status</div>
       <div class="ps-statuswrap">
-        ${item('Umwälzpumpe','Zeitfenster / Laufzeit',data.pumpOn)}
+        ${item('Umwälzpumpe','IST-Zustand',data.pumpOn)}
         ${item('Chlorinator','ORP-Regelung',data.chlorOn)}
         ${item('pH-Dosierpumpe','Prüfzeiten / Dosierung',data.phPumpOn)}
         ${item('Wärmepumpe','PV-Freigabe',data.heatpumpOn)}
       </div>
       <div class="ps-list" style="margin-top:10px">
+        <div class="ps-row"><div class="ps-k">Pumpe Zeitplan</div><div class="ps-v">${data.pumpScheduleActive ? 'AKTIV' : 'INAKTIV'}</div></div>
         <div class="ps-row"><div class="ps-k">PV Schwelle</div><div class="ps-v">${esc(data.threshold)} W</div></div>
         <div class="ps-row"><div class="ps-k">ORP Grenzen</div><div class="ps-v">${esc(data.orpOnThreshold)} / ${esc(data.orpOffThreshold)}</div></div>
         <div class="ps-row"><div class="ps-k">pH Tag</div><div class="ps-v">${esc(data.phDailyCount)}</div></div>
@@ -355,10 +356,147 @@ class Poolsteuerung extends utils.Adapter {
   }
 
   buildPhoneWidgetbuildPhoneWidget(data) {
-    return `<!-- phone-render:${esc(data.updated)} --><div style="padding:10px;color:#fff;background:#08111c;font-family:Arial">${esc(data.poolTemp)}°C | pH ${esc(data.ph)} | ORP ${esc(data.orp)} | pH Soll ${esc(data.phSet)} | ORP Soll ${esc(data.orpSet)}</div>`;
+    const badgeClass = (value, low, high) => {
+      const n = parseNum(value);
+      if (!Number.isFinite(n)) return 'neutral';
+      if (n < low) return 'warn';
+      if (n > high) return 'bad';
+      return 'good';
+    };
+
+    const phClass = badgeClass(data.ph, 7.0, 7.4);
+    const orpClass = badgeClass(data.orp, Number(data.orpOnThreshold || 725), Number(data.orpOffThreshold || 750));
+
+    const item = (label, value) => `
+      <div class="pp-row">
+        <div class="pp-k">${esc(label)}</div>
+        <div class="pp-v">${esc(value)}</div>
+      </div>`;
+
+    return `
+<!-- phone-render:${esc(data.updated)} -->
+<style>
+.pp-root,*{box-sizing:border-box}
+.pp-root{
+  width:100%;height:100%;padding:10px;
+  font-family:Arial,Helvetica,sans-serif;color:#0f172a;
+  background:linear-gradient(180deg,#0b1220 0%,#0f172a 100%);
+}
+.pp-card{
+  background:linear-gradient(180deg,#ffffff 0%,#eef5ff 100%);
+  border:1px solid rgba(15,23,42,.08);
+  border-radius:20px;
+  padding:12px;
+  margin-bottom:10px;
+  box-shadow:0 10px 24px rgba(0,0,0,.18);
+}
+.pp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.pp-title{font-size:18px;font-weight:800;color:#0f172a}
+.pp-sub{font-size:11px;color:#475569;text-align:right}
+.pp-temp{font-size:54px;font-weight:900;line-height:1;margin:10px 0;color:#0f172a}
+.pp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pp-box{
+  background:#ffffff;border:1px solid rgba(15,23,42,.08);
+  border-radius:14px;padding:10px;min-height:84px;
+}
+.pp-k{font-size:11px;color:#475569;font-weight:700;margin-bottom:6px}
+.pp-v{font-size:22px;font-weight:800;color:#0f172a;line-height:1.1}
+.pp-s{font-size:10px;color:#64748b;margin-top:6px}
+.pp-chip{display:inline-flex;align-items:center;justify-content:center;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;margin-top:6px}
+.pp-chip.good{background:#dcfce7;color:#166534}
+.pp-chip.warn{background:#fef3c7;color:#92400e}
+.pp-chip.bad{background:#fee2e2;color:#991b1b}
+.pp-chip.neutral{background:#e2e8f0;color:#334155}
+.pp-list{display:grid;gap:8px}
+.pp-row{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;
+  background:#ffffff;border:1px solid rgba(15,23,42,.08);border-radius:14px;padding:9px 10px;
+}
+.pp-row .pp-v{font-size:14px}
+.pp-statusgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pp-status{
+  background:#ffffff;border:1px solid rgba(15,23,42,.08);border-radius:14px;padding:10px;
+}
+.pp-status-name{font-size:12px;font-weight:800;color:#0f172a}
+.pp-pill{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:58px;margin-top:8px;padding:7px 9px;border-radius:999px;
+  font-size:11px;font-weight:900;color:#fff;
+}
+.pp-pill.on{background:linear-gradient(180deg,#22c55e,#16a34a)}
+.pp-pill.off{background:linear-gradient(180deg,#ef4444,#dc2626)}
+</style>
+
+<div class="pp-root">
+  <div class="pp-card">
+    <div class="pp-head">
+      <div class="pp-title">Pool Manager</div>
+      <div class="pp-sub">Aktualisiert<br>${esc(data.updated)}</div>
+    </div>
+    <div class="pp-temp">${esc(data.poolTemp)}°C</div>
+    <div class="pp-grid">
+      <div class="pp-box">
+        <div class="pp-k">pH</div>
+        <div class="pp-v">${esc(data.ph)}</div>
+        <div class="pp-s">Soll ${esc(data.phSet)}</div>
+        <div class="pp-chip ${phClass}">${phClass === 'good' ? 'OK' : phClass === 'warn' ? 'Niedrig' : 'Hoch'}</div>
+      </div>
+      <div class="pp-box">
+        <div class="pp-k">ORP</div>
+        <div class="pp-v">${esc(data.orp)}</div>
+        <div class="pp-s">Soll ${esc(data.orpSet)}</div>
+        <div class="pp-chip ${orpClass}">${orpClass === 'good' ? 'OK' : orpClass === 'warn' ? 'Niedrig' : 'Hoch'}</div>
+      </div>
+      <div class="pp-box">
+        <div class="pp-k">Außen</div>
+        <div class="pp-v">${esc(data.outsideTemp)}°C</div>
+        <div class="pp-s">Außentemperatur</div>
+      </div>
+      <div class="pp-box">
+        <div class="pp-k">Solltemp</div>
+        <div class="pp-v">${esc(data.targetTemp)}°C</div>
+        <div class="pp-s">Zieltemperatur</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pp-card">
+    <div class="pp-title" style="font-size:16px">Energie & Steuerung</div>
+    <div class="pp-list" style="margin-top:8px">
+      ${item('PV-Leistung', `${data.pv} W`)}
+      ${item('Netzeinspeisung', `${data.feedIn} W`)}
+      ${item('Netzbezug', `${data.gridSupply} W`)}
+      ${item('Batterie SoC', `${data.battery} %`)}
+      ${item('WP Freigabe', data.heatDecision)}
+      ${item('Chlor Freigabe', data.chlorDecision)}
+      ${item('Pumpe Zeitplan', data.pumpDecision)}
+      ${item('pH Prüfung', data.phDecision)}
+      ${item('pH Zeiten', data.phTimes)}
+      ${item('Letzte Dosierung', `${data.phLastDoseDurationSec} s`)}
+    </div>
+  </div>
+
+  <div class="pp-card">
+    <div class="pp-title" style="font-size:16px">Aktoren & Status</div>
+    <div class="pp-statusgrid" style="margin-top:8px">
+      <div class="pp-status"><div class="pp-status-name">Umwälzpumpe</div><div class="pp-pill ${data.pumpOn ? 'on' : 'off'}">${data.pumpOn ? 'EIN' : 'AUS'}</div></div>
+      <div class="pp-status"><div class="pp-status-name">Chlorinator</div><div class="pp-pill ${data.chlorOn ? 'on' : 'off'}">${data.chlorOn ? 'EIN' : 'AUS'}</div></div>
+      <div class="pp-status"><div class="pp-status-name">pH-Dosierpumpe</div><div class="pp-pill ${data.phPumpOn ? 'on' : 'off'}">${data.phPumpOn ? 'EIN' : 'AUS'}</div></div>
+      <div class="pp-status"><div class="pp-status-name">Wärmepumpe</div><div class="pp-pill ${data.heatpumpOn ? 'on' : 'off'}">${data.heatpumpOn ? 'EIN' : 'AUS'}</div></div>
+    </div>
+    <div class="pp-list" style="margin-top:8px">
+      ${item('PV Schwelle', `${data.threshold} W`)}
+      ${item('ORP Grenzen', `${data.orpOnThreshold} / ${data.orpOffThreshold}`)}
+      ${item('pH Tag', data.phDailyCount)}
+      ${item('Pumpe ml/min', data.phFlowMlMin)}
+      ${item('ml je 0,1 / 10m³', data.phMlPer01Per10)}
+      ${item('Poolvolumen', `${data.volume} m³`)}
+    </div>
+  </div>
+</div>`;
   }
 
-  async renderVis() {
+  async renderVisasync renderVis() {
     const ph = this.fmt(await this.getNumber(this.config.phStateId, 2), 2);
     const orp = this.fmt(await this.getNumber(this.config.orpStateId, 0), 0);
     const poolTemp = this.fmt(await this.getNumber(this.config.waterTempStateId, 1), 1);
@@ -378,6 +516,7 @@ class Poolsteuerung extends utils.Adapter {
     const volume = this.fmt(this.calcVolume(), 2, '--');
 
     const pumpOn = await this.getBool(this.config.circulationPumpSocketStateId);
+    const pumpScheduleActive = this.isPumpScheduleActive ? this.isPumpScheduleActive(new Date()) : false;
     const chlorOnRaw = await this.getBool(this.config.chlorinatorSocketStateId);
     const phPumpOn = await this.getBool(this.config.phPumpSocketStateId);
     const threshold = parseNum(this.config.heatEnableFeedInThresholdW || 1000);
@@ -442,6 +581,7 @@ class Poolsteuerung extends utils.Adapter {
       orpOnThreshold: this.fmt(orpOnThreshold, 0, '725'),
       orpOffThreshold: this.fmt(orpOffThreshold, 0, '750'),
       pumpOn,
+      pumpScheduleActive,
       chlorOn,
       phPumpOn,
       chlorDecision,
@@ -745,7 +885,7 @@ class Poolsteuerung extends utils.Adapter {
 }
 
 if (require.main !== module) {
-  module.exports = options => new Poolsteuerung(options);
+  module.exports = options => new Pool Manager(options);
 } else {
-  (() => new Poolsteuerung())();
+  (() => new Pool Manager())();
 }
