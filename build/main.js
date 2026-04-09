@@ -630,7 +630,7 @@ class Poolsteuerung extends utils.Adapter {
     await this.ensureState('status.debug.lastVisUpdate', 'string', 'text', '', false);
     await this.setStateAsync('status.debug.lastVisUpdate', data.updated, true);
     await this.ensureState('status.debug.lastDecision', 'string', 'text', '', false);
-    await this.setStateAsync('status.debug.lastPumpDecision', `Zeitplan ${scheduleActive ? 'AKTIV' : 'INAKTIV'} | Pumpe ${pumpOn ? 'EIN' : 'AUS'}`, true);
+    await this.setStateAsync('status.debug.lastPumpDecision', `Zeitplan ${data.pumpScheduleActive ? 'AKTIV' : 'INAKTIV'} | Pumpe ${data.pumpOn ? 'EIN' : 'AUS'}`, true);
     await this.setStateAsync('status.debug.lastDecision', `WP: ${data.heatpumpOn ? 'EIN' : 'AUS'} | ${data.heatDecision} || Chlor: ${data.chlorOn ? 'EIN' : 'AUS'} | ${data.chlorDecision}`, true);
 
   }
