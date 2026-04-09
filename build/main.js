@@ -71,6 +71,37 @@ class Poolsteuerung extends utils.Adapter {
     }
   }
 
+
+  async setSwitchStateCompat(id, on) {
+    if (!id) return;
+    try {
+      const obj = await this.getForeignObjectAsync(id);
+      const common = obj && obj.common ? obj.common : {};
+      let value = on;
+
+      if (common.type === 'number') {
+        value = on ? 1 : 0;
+      } else if (common.type === 'string') {
+        const states = common.states || {};
+        const normalized = Object.entries(states).map(([k,v]) => [String(k), String(v).toLowerCase()]);
+        const onEntry = normalized.find(([k,v]) => k === '1' || v === 'on' || v === 'ein' || v === 'true');
+        const offEntry = normalized.find(([k,v]) => k === '0' || v === 'off' || v === 'aus' || v === 'false');
+        if (onEntry && offEntry) {
+          value = on ? onEntry[0] : offEntry[0];
+        } else {
+          value = on ? '1' : '0';
+        }
+      } else {
+        value = !!on;
+      }
+
+      await this.setForeignStateAsync(id, value, false);
+    } catch (e) {
+      this.log.warn(`Schaltfehler für ${id}: ${e.message || e}`);
+      throw e;
+    }
+  }
+
   async getText(id, fallback = '--') {
     if (!id) return fallback;
     try {
@@ -546,7 +577,7 @@ class Poolsteuerung extends utils.Adapter {
 
     if (this.config.chlorinatorSocketStateId && chlorDesired !== chlorOnRaw) {
       try {
-        await this.setForeignStateAsync(this.config.chlorinatorSocketStateId, chlorDesired, false);
+        await this.setSwitchStateCompat(this.config.chlorinatorSocketStateId, chlorDesired);
       } catch (e) {
         this.log.warn('Chlorinator konnte nicht gesetzt werden: ' + e);
       }
@@ -761,10 +792,10 @@ class Poolsteuerung extends utils.Adapter {
     if (!pumpId || seconds <= 0) return false;
     if (this.config.simulateMode) return true;
     try {
-      await this.setForeignStateAsync(pumpId, true, false);
+      await this.setSwitchStateCompat(pumpId, true);
       setTimeout(async () => {
         try {
-          await this.setForeignStateAsync(pumpId, false, false);
+          await this.setSwitchStateCompat(pumpId, false);
         } catch (e) {
           this.log.warn('Dosierpumpe konnte nicht ausgeschaltet werden: ' + e.message);
         }
@@ -787,7 +818,7 @@ class Poolsteuerung extends utils.Adapter {
         pumpDecision = `${pumpTarget ? 'würde EIN' : 'würde AUS'} (Simulationsmodus)`;
       } else {
         try {
-          await this.setForeignStateAsync(pumpId, pumpTarget, false);
+          await this.setSwitchStateCompat(pumpId, pumpTarget);
           pumpDecision = `${pumpTarget ? 'EIN' : 'AUS'} via Zeitplan`;
         } catch (e) {
           pumpDecision = `Schaltfehler: ${e.message || e}`;
