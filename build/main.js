@@ -9,7 +9,7 @@ function esc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-class Pool Manager extends utils.Adapter {
+class Poolsteuerung extends utils.Adapter {
 
   lastTabletWidget = '';
   lastPhoneWidget = '';
@@ -526,9 +526,15 @@ class Pool Manager extends utils.Adapter {
 
     let chlorDesired = chlorOnRaw;
     let chlorDecision = '';
+    if (!chlorEnabledMaster) {
+      chlorDesired = chlorOnRaw;
+      chlorDecision = 'Steuerung deaktiviert';
+    }
     const orpNum = parseNum(orp);
 
-    if (!pumpOn) {
+    if (!chlorEnabledMaster) {
+      chlorDecision = 'Steuerung deaktiviert';
+    } else if (!pumpOn) {
       chlorDesired = false;
       chlorDecision = 'Pumpe AUS';
     } else if (!Number.isFinite(orpNum)) {
@@ -778,11 +784,17 @@ class Pool Manager extends utils.Adapter {
   async applyControlLogic() {
     const now = new Date();
     const pumpId = this.config.circulationPumpSocketStateId;
-    const pumpTarget = this.isPumpScheduleActive(now);
+    const circulationEnabled = this.config.enableCirculationControl !== false;
+    const phEnabledMaster = this.config.enablePhControl !== false;
+    const heatEnabledMaster = this.config.enableHeatpumpControl !== false;
+    const chlorEnabledMaster = this.config.enableChlorControl !== false;
+    const pumpTarget = circulationEnabled ? this.isPumpScheduleActive(now) : false;
     const pumpCurrent = await this.getBool(pumpId);
-    let pumpDecision = pumpTarget ? 'Zeitfenster aktiv' : 'Kein aktives Zeitfenster';
+    let pumpDecision = !circulationEnabled ? 'Steuerung deaktiviert' : (pumpTarget ? 'Zeitfenster aktiv' : 'Kein aktives Zeitfenster');
 
-    if (pumpTarget) {
+    if (!circulationEnabled) {
+      pumpDecision = pumpCurrent ? 'Manuell EIN (Steuerung deaktiviert)' : 'Steuerung deaktiviert';
+    } else if (pumpTarget) {
       if (pumpId && pumpCurrent !== true) {
         if (this.config.simulateMode) {
           pumpDecision = 'würde EIN (Simulationsmodus)';
@@ -808,7 +820,8 @@ class Pool Manager extends utils.Adapter {
     const phValue = await this.getNumber(this.config.phStateId, 2);
     const phSet = parseNum(this.config.phSetpoint || 7.2);
     const phTolerance = parseNum(this.config.phDoseTolerance || 0.05);
-    const phEnabled = this.config.phDoseEnableStateId ? await this.getBool(this.config.phDoseEnableStateId) : true;
+    const phEnabledState = this.config.phDoseEnableStateId ? await this.getBool(this.config.phDoseEnableStateId) : true;
+    const phEnabled = phEnabledMaster && phEnabledState;
     const phPumpId = this.config.phPumpSocketStateId;
     const phPumpCurrent = await this.getBool(phPumpId);
     const fallbackDoseDurationSec = Math.max(1, parseNum(this.config.phDoseDurationSec || 30));
@@ -896,7 +909,7 @@ class Pool Manager extends utils.Adapter {
 }
 
 if (require.main !== module) {
-  module.exports = options => new Pool Manager(options);
+  module.exports = options => new Poolsteuerung(options);
 } else {
-  (() => new Pool Manager())();
+  (() => new Poolsteuerung())();
 }

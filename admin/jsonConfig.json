@@ -45,6 +45,26 @@
           "newLine": true,
           "help": "Wird beim Adapterstart / Poll neu berechnet.",
           "disabled": true
+        },
+        "enableCirculationControl": {
+          "type": "checkbox",
+          "label": "Umw\u00e4lzpumpe aktiv",
+          "newLine": true
+        },
+        "enablePhControl": {
+          "type": "checkbox",
+          "label": "PH Steuerung aktiv",
+          "newLine": true
+        },
+        "enableHeatpumpControl": {
+          "type": "checkbox",
+          "label": "W\u00e4rmepumpensteuerung aktiv",
+          "newLine": true
+        },
+        "enableChlorControl": {
+          "type": "checkbox",
+          "label": "Chlorsteuerung aktiv",
+          "newLine": true
         }
       }
     },
