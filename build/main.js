@@ -578,6 +578,7 @@ class Poolsteuerung extends utils.Adapter {
     if (this.config.chlorinatorSocketStateId && chlorDesired !== chlorOnRaw) {
       try {
         await this.setSwitchStateCompat(this.config.chlorinatorSocketStateId, chlorDesired);
+        this.debug(`Chlorinator Schaltbefehl: ${chlorDesired ? 'EIN' : 'AUS'}`);
       } catch (e) {
         this.log.warn('Chlorinator konnte nicht gesetzt werden: ' + e);
       }
@@ -820,8 +821,10 @@ class Poolsteuerung extends utils.Adapter {
         try {
           await this.setSwitchStateCompat(pumpId, pumpTarget);
           pumpDecision = `${pumpTarget ? 'EIN' : 'AUS'} via Zeitplan`;
+          this.debug(`Pumpenentscheidung: ${pumpDecision}`);
         } catch (e) {
           pumpDecision = `Schaltfehler: ${e.message || e}`;
+        this.debug(`Pumpenentscheidung: ${pumpDecision}`);
         }
       }
     }
@@ -862,6 +865,7 @@ class Poolsteuerung extends utils.Adapter {
     } else if (phPumpCurrent) {
       phDecision = 'Dosierpumpe läuft bereits';
     } else {
+      this.debug(`pH-Dosierung gestartet: ${calcDoseSec}s`);
       const ok = await this.runDosePumpOnce(calcDoseSec);
       if (ok) {
         await this.setStateAsync('status.phDose.lastDoseTs', nowMs, true);
@@ -876,7 +880,9 @@ class Poolsteuerung extends utils.Adapter {
     await this.ensureState('status.debug.lastPumpDecision', 'string', 'text', '', false);
     await this.ensureState('status.debug.lastPhDecision', 'string', 'text', '', false);
     await this.setStateAsync('status.debug.lastPumpDecision', pumpDecision, true);
+    this.debug(`Pumpenentscheidung: ${pumpDecision}`);
     await this.setStateAsync('status.debug.lastPhDecision', phDecision, true);
+    this.debug(`pH-Entscheidung: ${phDecision}`);
   }
 
   async onReady() {
