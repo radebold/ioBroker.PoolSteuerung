@@ -819,7 +819,6 @@ class Poolsteuerung extends utils.Adapter {
     const circulationEnabled = this.config.enableCirculationControl !== false;
     const phEnabledMaster = this.config.enablePhControl !== false;
     const heatEnabledMaster = this.config.enableHeatpumpControl !== false;
-    const chlorEnabledMaster = this.config.enableChlorControl !== false;
 
     const pumpTarget = circulationEnabled ? this.isPumpScheduleActive(now) : false;
     const pumpCurrent = await this.getBool(pumpId);
@@ -842,7 +841,7 @@ class Poolsteuerung extends utils.Adapter {
       } else if (pumpId) {
         try {
           await this.setSwitchStateCompat(pumpId, pumpTarget);
-          this.suppressOwnPumpStateUntil = Date.now() + 5000;
+          this.suppressOwnPumpStateUntil = Date.now() + 8000;
           this.lastPumpActualState = pumpTarget;
           pumpDecision = `${pumpTarget ? 'EIN' : 'AUS'} via Zeitfensterwechsel`;
         } catch (e) {
@@ -860,7 +859,7 @@ class Poolsteuerung extends utils.Adapter {
     } else if (pumpCurrent && !pumpTarget) {
       pumpDecision = 'Manueller Override aktiv';
     } else if (!pumpCurrent && pumpTarget) {
-      pumpDecision = 'Manuell AUS trotz Zeitfenster';
+      pumpDecision = 'Warte auf Pumpen-Status';
     }
 
     this.lastPumpScheduleActiveMemory = pumpTarget;
@@ -889,7 +888,7 @@ class Poolsteuerung extends utils.Adapter {
     let phDecision = 'keine Prüfung';
     if (!phEnabled) {
       phDecision = 'pH Freigabe AUS';
-    } else if (!pumpTarget) {
+    } else if (!pumpCurrent) {
       phDecision = 'Pumpe AUS';
     } else if (!this.isPhCheckDue(now)) {
       phDecision = `warte auf Prüfzeit (${this.config.phCheckTimes || '-'})`;
@@ -915,17 +914,7 @@ class Poolsteuerung extends utils.Adapter {
       }
     }
 
-    await this.ensureState('status.debug.lastPumpDecision', 'string', 'text', '', false);
-    await this.ensureState('status.debug.lastPhDecision', 'string', 'text', '', false);
     await this.setStateAsync('status.debug.lastPumpDecision', pumpDecision, true);
-    const lastPumpLoggedDecisionState = await this.getStateAsync('status.debug.lastPumpLoggedDecision');
-    const lastPumpLoggedDecision = lastPumpLoggedDecisionState && lastPumpLoggedDecisionState.val ? String(lastPumpLoggedDecisionState.val) : '';
-    const ownWriteSuppressed = Date.now() < (this.suppressOwnPumpLogUntil || 0);
-    const shouldLogPump = !ownWriteSuppressed && (scheduleEdge || pumpDecision !== lastPumpLoggedDecision || pumpDecision.startsWith('Schaltfehler'));
-    if (shouldLogPump) {
-      this.debug(`Pumpenentscheidung: ${pumpDecision} | zeitfenster=${pumpTarget ? 'aktiv' : 'inaktiv'} | ist=${pumpCurrent ? 'ein' : 'aus'} | edge=${scheduleEdge ? 'ja' : 'nein'}`);
-      await this.setStateAsync('status.debug.lastPumpLoggedDecision', pumpDecision, true);
-    }
     await this.setStateAsync('status.debug.lastPhDecision', phDecision, true);
   }
 
@@ -969,17 +958,17 @@ class Poolsteuerung extends utils.Adapter {
       const currentVal = !!state.val;
       if (Date.now() < (this.suppressOwnPumpStateUntil || 0)) {
         this.lastPumpActualState = currentVal;
-      } else {
-        const scheduleActive = typeof this.isPumpScheduleActive === 'function' ? this.isPumpScheduleActive(new Date()) : false;
-        if (!scheduleActive && currentVal) {
-          this.pumpManualOverride = 'on';
-        } else if (scheduleActive && !currentVal) {
-          this.pumpManualOverride = 'off';
-        } else {
-          this.pumpManualOverride = '';
-        }
-        this.lastPumpActualState = currentVal;
+        return;
       }
+      const scheduleActive = typeof this.isPumpScheduleActive === 'function' ? this.isPumpScheduleActive(new Date()) : false;
+      if (!scheduleActive && currentVal) {
+        this.pumpManualOverride = 'on';
+      } else if (scheduleActive && !currentVal) {
+        this.pumpManualOverride = 'off';
+      } else {
+        this.pumpManualOverride = '';
+      }
+      this.lastPumpActualState = currentVal;
     }
 
     if (this.monitoredIds.includes(id)) {
