@@ -216,6 +216,42 @@
         }
       }
     },
+    "heat": {
+      "type": "panel",
+      "label": "WÄRMEPUMPEN-STEUERUNG",
+      "items": {
+        "waterTempStateId": {
+          "type": "text",
+          "label": "State-ID Wassertemperatur",
+          "newLine": true
+        },
+        "outsideTempStateId": {
+          "type": "text",
+          "label": "State-ID Außentemperatur",
+          "newLine": true
+        },
+        "heatpumpPowerStateId": {
+          "type": "text",
+          "label": "Wärmepumpe Power",
+          "newLine": true
+        },
+        "heatpumpModeStateId": {
+          "type": "text",
+          "label": "Wärmepumpe Mode",
+          "newLine": true
+        },
+        "heatpumpSetTempStateId": {
+          "type": "text",
+          "label": "Wärmepumpe Solltemperatur",
+          "newLine": true
+        },
+        "heatpumpTargetTemp": {
+          "type": "number",
+          "label": "Solltemperatur",
+          "newLine": true
+        }
+      }
+    },
     "solar": {
       "type": "panel",
       "label": "SOLAR",
@@ -263,42 +299,6 @@
           "label": "iPhone HTML-Objekt: poolsteuerung.0.vis.htmlPhone",
           "newLine": true,
           "disabled": true
-        }
-      }
-    },
-    "heat": {
-      "type": "panel",
-      "label": "WÄRMEPUMPE",
-      "items": {
-        "waterTempStateId": {
-          "type": "text",
-          "label": "State-ID Wassertemperatur",
-          "newLine": true
-        },
-        "outsideTempStateId": {
-          "type": "text",
-          "label": "State-ID Außentemperatur",
-          "newLine": true
-        },
-        "heatpumpPowerStateId": {
-          "type": "text",
-          "label": "Wärmepumpe Power",
-          "newLine": true
-        },
-        "heatpumpModeStateId": {
-          "type": "text",
-          "label": "Wärmepumpe Mode",
-          "newLine": true
-        },
-        "heatpumpSetTempStateId": {
-          "type": "text",
-          "label": "Wärmepumpe Solltemperatur",
-          "newLine": true
-        },
-        "heatpumpTargetTemp": {
-          "type": "number",
-          "label": "Solltemperatur",
-          "newLine": true
         }
       }
     }
