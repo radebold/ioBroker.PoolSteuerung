@@ -842,6 +842,7 @@ class Poolsteuerung extends utils.Adapter {
 
     const lastScheduleActive = this.lastPumpScheduleActiveMemory === null ? pumpTarget : this.lastPumpScheduleActiveMemory;
     const scheduleEdge = pumpTarget !== lastScheduleActive;
+
     if (scheduleEdge) {
       this.pumpManualOverride = '';
     }
@@ -862,22 +863,10 @@ class Poolsteuerung extends utils.Adapter {
           pumpDecision = `Schaltfehler: ${e.message || e}`;
         }
       }
-    } else if (this.pumpManualOverride === 'on' && !pumpTarget) {
+    } else if (pumpCurrent && !pumpTarget) {
       pumpDecision = 'Manueller Override aktiv';
-    } else if (this.pumpManualOverride === 'off' && pumpTarget) {
+    } else if (!pumpCurrent && pumpTarget) {
       pumpDecision = 'Manuell AUS trotz Zeitfenster';
-    } else if (pumpTarget && !pumpCurrent) {
-      if (this.config.simulateMode) {
-        pumpDecision = 'würde EIN (Zeitfenster aktiv)';
-      } else if (pumpId) {
-        try {
-          await this.setSwitchStateCompat(pumpId, true);
-          this.suppressOwnPumpStateUntil = Date.now() + 5000;
-          pumpDecision = 'EIN (Zeitfenster aktiv)';
-        } catch (e) {
-          pumpDecision = `Schaltfehler: ${e.message || e}`;
-        }
-      }
     } else if (pumpCurrent && pumpTarget) {
       pumpDecision = 'EIN (Zeitfenster aktiv)';
     } else {
