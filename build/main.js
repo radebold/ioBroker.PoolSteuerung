@@ -350,9 +350,9 @@ class Poolsteuerung extends utils.Adapter {
         <div class="ps-row"><div class="ps-k">WP Freigabe</div><div class="ps-v">${esc(data.heatDecision)}</div></div>
         <div class="ps-row"><div class="ps-k">Chlor Freigabe</div><div class="ps-v">${esc(data.chlorDecision)}</div></div>
         <div class="ps-row"><div class="ps-k">Pumpe Zeitplan</div><div class="ps-v">${esc(data.pumpDecision)}</div></div>
-        <div class="ps-row"><div class="ps-k">pH Prüfung</div><div class="ps-v">${esc(data.phDecision)}</div></div>
-        <div class="ps-row"><div class="ps-k">pH Zeiten</div><div class="ps-v">${esc(data.phTimes)}</div></div>
-        <div class="ps-row"><div class="ps-k">Letzte Dosierung</div><div class="ps-v">${esc(data.phLastDoseDurationSec)} s</div></div>
+        <div class="ps-row"><div class="ps-k">PH Freigabe</div><div class="ps-v">${esc(data.phDecision)}</div></div>
+        <div class="ps-row"><div class="ps-k">PH Zeiten</div><div class="ps-v">${esc(data.phTimes)}</div></div>
+        <div class="ps-row"><div class="ps-k">Letzte PH-Dosierung</div><div class="ps-v">${esc(data.phLastDoseDurationSec)} s</div></div>
       </div>
     </div>
     <div class="ps-card">
@@ -492,9 +492,9 @@ class Poolsteuerung extends utils.Adapter {
       ${item('WP Freigabe', data.heatDecision)}
       ${item('Chlor Freigabe', data.chlorDecision)}
       ${item('Pumpe Zeitplan', data.pumpDecision)}
-      ${item('pH Prüfung', data.phDecision)}
-      ${item('pH Zeiten', data.phTimes)}
-      ${item('Letzte Dosierung', `${data.phLastDoseDurationSec} s`)}
+      ${item('PH Freigabe', data.phDecision)}
+      ${item('PH Zeiten', data.phTimes)}
+      ${item('Letzte PH-Dosierung', `${data.phLastDoseDurationSec} s`)}
     </div>
   </div>
 
@@ -888,21 +888,21 @@ class Poolsteuerung extends utils.Adapter {
 
     let phDecision = 'keine Prüfung';
     if (!phEnabled) {
-      phDecision = 'pH Freigabe AUS';
-    } else if (!pumpTarget) {
-      phDecision = 'Pumpe AUS';
+      phDecision = 'PH-Steuerung deaktiviert';
+    } else if (!pumpCurrent) {
+      phDecision = 'PH AUS (Pumpe AUS)';
     } else if (!this.isPhCheckDue(now)) {
-      phDecision = `warte auf Prüfzeit (${this.config.phCheckTimes || '-'})`;
+      phDecision = `Warte auf Prüfzeit (${this.config.phCheckTimes || '-'})`;
     } else if (phValue === null || !Number.isFinite(phValue)) {
-      phDecision = 'pH ungültig';
+      phDecision = 'PH AUS (Wert ungültig)';
     } else if (dailyCount >= doseMaxPerDay) {
-      phDecision = `Tageslimit erreicht (${dailyCount}/${doseMaxPerDay})`;
+      phDecision = `PH AUS (Tageslimit ${dailyCount}/${doseMaxPerDay})`;
     } else if (lockRemainingMs > 0) {
-      phDecision = `Sperrzeit aktiv (${Math.ceil(lockRemainingMs / 60000)} min)`;
+      phDecision = `PH Sperrzeit ${Math.ceil(lockRemainingMs / 60000)} min`;
     } else if (phValue <= (phSet + phTolerance)) {
-      phDecision = `pH OK (${phValue} <= ${this.fmt(phSet + phTolerance, 2, '--')})`;
+      phDecision = `PH OK (${phValue} <= ${this.fmt(phSet + phTolerance, 2, '--')})`;
     } else if (phPumpCurrent) {
-      phDecision = 'Dosierpumpe läuft bereits';
+      phDecision = 'PH-Dosierpumpe läuft bereits';
     } else {
       const ok = await this.runDosePumpOnce(calcDoseSec);
       if (ok) {
@@ -911,22 +911,16 @@ class Poolsteuerung extends utils.Adapter {
         const newCount = await this.incrementTodayDoseCount(now);
         phDecision = `${this.config.simulateMode ? 'würde dosieren' : 'dosiert'} ${calcDoseSec}s | pH ${phValue} > ${phSet}+${phTolerance} | Tag ${newCount}/${doseMaxPerDay}`;
       } else {
-        phDecision = 'Dosierung fehlgeschlagen';
+        phDecision = 'PH-Dosierung fehlgeschlagen';
       }
     }
 
-    await this.ensureState('status.debug.lastPumpDecision', 'string', 'text', '', false);
-    await this.ensureState('status.debug.lastPhDecision', 'string', 'text', '', false);
     await this.setStateAsync('status.debug.lastPumpDecision', pumpDecision, true);
-    const lastPumpLoggedDecisionState = await this.getStateAsync('status.debug.lastPumpLoggedDecision');
-    const lastPumpLoggedDecision = lastPumpLoggedDecisionState && lastPumpLoggedDecisionState.val ? String(lastPumpLoggedDecisionState.val) : '';
-    const ownWriteSuppressed = Date.now() < (this.suppressOwnPumpLogUntil || 0);
-    const shouldLogPump = !ownWriteSuppressed && (scheduleEdge || pumpDecision !== lastPumpLoggedDecision || pumpDecision.startsWith('Schaltfehler'));
-    if (shouldLogPump) {
-      this.debug(`Pumpenentscheidung: ${pumpDecision} | zeitfenster=${pumpTarget ? 'aktiv' : 'inaktiv'} | ist=${pumpCurrent ? 'ein' : 'aus'} | edge=${scheduleEdge ? 'ja' : 'nein'}`);
-      await this.setStateAsync('status.debug.lastPumpLoggedDecision', pumpDecision, true);
-    }
     await this.setStateAsync('status.debug.lastPhDecision', phDecision, true);
+    if (this.config.debugMode && phDecision !== this.lastLoggedPhDecision) {
+      this.debug(`PH: ${phDecision}`);
+      this.lastLoggedPhDecision = phDecision;
+    }
   }
 
   async onReady() {
