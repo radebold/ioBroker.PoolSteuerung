@@ -18,6 +18,9 @@ class Poolsteuerung extends utils.Adapter {
   lastRenderAt = 0;
   lastPumpScheduleActiveMemory = null;
   suppressOwnPumpLogUntil = 0;
+  suppressOwnPumpStateUntil = 0;
+  pumpManualOverride = '';
+  lastChlorDemandSince = 0;
 
   constructor(options = {}) {
     super({ ...options, name: 'poolsteuerung' });
@@ -367,6 +370,7 @@ class Poolsteuerung extends utils.Adapter {
         <div class="ps-row"><div class="ps-k">Pumpe Zeitplan</div><div class="ps-v">${data.pumpScheduleActive ? 'AKTIV' : 'INAKTIV'}</div></div>
         <div class="ps-row"><div class="ps-k">PV Schwelle</div><div class="ps-v">${esc(data.threshold)} W</div></div>
         <div class="ps-row"><div class="ps-k">ORP Grenzen</div><div class="ps-v">${esc(data.orpOnThreshold)} / ${esc(data.orpOffThreshold)}</div></div>
+        <div class="ps-row"><div class="ps-k">Chlor Verzögerung</div><div class="ps-v">${esc(data.chlorOnDelaySec)} s</div></div>
         <div class="ps-row"><div class="ps-k">pH Tag</div><div class="ps-v">${esc(data.phDailyCount)}</div></div>
         <div class="ps-row"><div class="ps-k">Pumpe ml/min</div><div class="ps-v">${esc(data.phFlowMlMin)}</div></div>
         <div class="ps-row"><div class="ps-k">ml je 0,1 / 10m³</div><div class="ps-v">${esc(data.phMlPer01Per10)}</div></div>
@@ -509,6 +513,7 @@ class Poolsteuerung extends utils.Adapter {
     <div class="pp-list" style="margin-top:8px">
       ${item('PV Schwelle', `${data.threshold} W`)}
       ${item('ORP Grenzen', `${data.orpOnThreshold} / ${data.orpOffThreshold}`)}
+      ${item('Chlor Verzögerung', `${data.chlorOnDelaySec} s`)}
       ${item('pH Tag', data.phDailyCount)}
       ${item('Pumpe ml/min', data.phFlowMlMin)}
       ${item('ml je 0,1 / 10m³', data.phMlPer01Per10)}
@@ -547,37 +552,47 @@ class Poolsteuerung extends utils.Adapter {
     const chlorOnRaw = await this.getBool(this.config.chlorinatorSocketStateId);
     const phPumpOn = await this.getBool(this.config.phPumpSocketStateId);
     const threshold = parseNum(this.config.heatEnableFeedInThresholdW || 1000);
+    const chlorOnDelaySec = Math.max(0, parseNum(this.config.chlorOnDelaySec || 0));
 
     const orpOnThreshold = parseNum(this.config.orpOnThreshold || 725);
     const orpOffThreshold = parseNum(this.config.orpOffThreshold || 750);
 
     let chlorDesired = chlorOnRaw;
     let chlorDecision = '';
-    if (!chlorEnabledMaster) {
-      chlorDesired = chlorOnRaw;
-      chlorDecision = 'Steuerung deaktiviert';
-    }
     const orpNum = parseNum(orp);
 
     if (!chlorEnabledMaster) {
       chlorDecision = 'Steuerung deaktiviert';
+      this.lastChlorDemandSince = 0;
     } else if (!pumpOn) {
       chlorDesired = false;
       chlorDecision = 'Pumpe AUS';
+      this.lastChlorDemandSince = 0;
     } else if (!Number.isFinite(orpNum)) {
       chlorDesired = false;
       chlorDecision = 'ORP ungültig';
+      this.lastChlorDemandSince = 0;
     } else if (orpNum <= orpOnThreshold) {
-      chlorDesired = true;
-      chlorDecision = `ORP niedrig (${orpNum} <= ${orpOnThreshold})`;
+      const nowMs = Date.now();
+      if (!this.lastChlorDemandSince) this.lastChlorDemandSince = nowMs;
+      const elapsedMs = nowMs - this.lastChlorDemandSince;
+      if (elapsedMs >= chlorOnDelaySec * 1000) {
+        chlorDesired = true;
+        chlorDecision = `Chlor EIN (ORP <= ${orpOnThreshold})`;
+      } else {
+        chlorDesired = false;
+        chlorDecision = `Warte ${Math.max(0, Math.ceil(chlorOnDelaySec - elapsedMs / 1000))}s auf Chlor-EIN`;
+      }
     } else if (orpNum > orpOffThreshold) {
       chlorDesired = false;
-      chlorDecision = `ORP hoch (${orpNum} > ${orpOffThreshold})`;
+      chlorDecision = `Chlor AUS (ORP > ${orpOffThreshold})`;
+      this.lastChlorDemandSince = 0;
     } else {
       chlorDecision = `Hysterese (${orpOnThreshold}-${orpOffThreshold})`;
+      if (!chlorOnRaw) this.lastChlorDemandSince = 0;
     }
 
-    if (this.config.chlorinatorSocketStateId && chlorDesired !== chlorOnRaw) {
+    if (chlorEnabledMaster && this.config.chlorinatorSocketStateId && chlorDesired !== chlorOnRaw) {
       try {
         await this.setSwitchStateCompat(this.config.chlorinatorSocketStateId, chlorDesired);
       } catch (e) {
@@ -613,6 +628,7 @@ class Poolsteuerung extends utils.Adapter {
       threshold: this.fmt(threshold, 0, '1000'),
       orpOnThreshold: this.fmt(orpOnThreshold, 0, '725'),
       orpOffThreshold: this.fmt(orpOffThreshold, 0, '750'),
+      chlorOnDelaySec: this.fmt(chlorOnDelaySec, 0, '0'),
       pumpOn,
       pumpScheduleActive,
       chlorOn,
@@ -816,14 +832,19 @@ class Poolsteuerung extends utils.Adapter {
     const circulationEnabled = this.config.enableCirculationControl !== false;
     const phEnabledMaster = this.config.enablePhControl !== false;
     const heatEnabledMaster = this.config.enableHeatpumpControl !== false;
-    const chlorEnabledMaster = this.config.enableChlorControl !== false;
+
     const pumpTarget = circulationEnabled ? this.isPumpScheduleActive(now) : false;
     const pumpCurrent = await this.getBool(pumpId);
 
     await this.ensureState('status.debug.lastPumpScheduleActive', 'boolean', 'indicator', false, false);
-    await this.ensureState('status.debug.lastPumpLoggedDecision', 'string', 'text', '', false);
+    await this.ensureState('status.debug.lastPumpDecision', 'string', 'text', '', false);
+    await this.ensureState('status.debug.lastPhDecision', 'string', 'text', '', false);
+
     const lastScheduleActive = this.lastPumpScheduleActiveMemory === null ? pumpTarget : this.lastPumpScheduleActiveMemory;
     const scheduleEdge = pumpTarget !== lastScheduleActive;
+    if (scheduleEdge) {
+      this.pumpManualOverride = '';
+    }
 
     let pumpDecision = !circulationEnabled ? 'Steuerung deaktiviert' : (pumpTarget ? 'Zeitfenster aktiv' : 'Kein aktives Zeitfenster');
 
@@ -835,18 +856,30 @@ class Poolsteuerung extends utils.Adapter {
       } else if (pumpId) {
         try {
           await this.setSwitchStateCompat(pumpId, pumpTarget);
-          this.suppressOwnPumpLogUntil = Date.now() + 5000;
+          this.suppressOwnPumpStateUntil = Date.now() + 5000;
           pumpDecision = `${pumpTarget ? 'EIN' : 'AUS'} via Zeitfensterwechsel`;
         } catch (e) {
           pumpDecision = `Schaltfehler: ${e.message || e}`;
         }
       }
-    } else if (pumpCurrent && !pumpTarget) {
+    } else if (this.pumpManualOverride === 'on' && !pumpTarget) {
       pumpDecision = 'Manueller Override aktiv';
+    } else if (this.pumpManualOverride === 'off' && pumpTarget) {
+      pumpDecision = 'Manuell AUS trotz Zeitfenster';
+    } else if (pumpTarget && !pumpCurrent) {
+      if (this.config.simulateMode) {
+        pumpDecision = 'würde EIN (Zeitfenster aktiv)';
+      } else if (pumpId) {
+        try {
+          await this.setSwitchStateCompat(pumpId, true);
+          this.suppressOwnPumpStateUntil = Date.now() + 5000;
+          pumpDecision = 'EIN (Zeitfenster aktiv)';
+        } catch (e) {
+          pumpDecision = `Schaltfehler: ${e.message || e}`;
+        }
+      }
     } else if (pumpCurrent && pumpTarget) {
       pumpDecision = 'EIN (Zeitfenster aktiv)';
-    } else if (!pumpCurrent && pumpTarget) {
-      pumpDecision = 'Manuell AUS trotz Zeitfenster';
     } else {
       pumpDecision = 'AUS (kein Zeitfenster)';
     }
@@ -876,7 +909,7 @@ class Poolsteuerung extends utils.Adapter {
     let phDecision = 'keine Prüfung';
     if (!phEnabled) {
       phDecision = 'pH Freigabe AUS';
-    } else if (!pumpTarget) {
+    } else if (!pumpCurrent) {
       phDecision = 'Pumpe AUS';
     } else if (!this.isPhCheckDue(now)) {
       phDecision = `warte auf Prüfzeit (${this.config.phCheckTimes || '-'})`;
@@ -902,17 +935,7 @@ class Poolsteuerung extends utils.Adapter {
       }
     }
 
-    await this.ensureState('status.debug.lastPumpDecision', 'string', 'text', '', false);
-    await this.ensureState('status.debug.lastPhDecision', 'string', 'text', '', false);
     await this.setStateAsync('status.debug.lastPumpDecision', pumpDecision, true);
-    const lastPumpLoggedDecisionState = await this.getStateAsync('status.debug.lastPumpLoggedDecision');
-    const lastPumpLoggedDecision = lastPumpLoggedDecisionState && lastPumpLoggedDecisionState.val ? String(lastPumpLoggedDecisionState.val) : '';
-    const ownWriteSuppressed = Date.now() < (this.suppressOwnPumpLogUntil || 0);
-    const shouldLogPump = !ownWriteSuppressed && (scheduleEdge || pumpDecision !== lastPumpLoggedDecision || pumpDecision.startsWith('Schaltfehler'));
-    if (shouldLogPump) {
-      this.debug(`Pumpenentscheidung: ${pumpDecision} | zeitfenster=${pumpTarget ? 'aktiv' : 'inaktiv'} | ist=${pumpCurrent ? 'ein' : 'aus'} | edge=${scheduleEdge ? 'ja' : 'nein'}`);
-      await this.setStateAsync('status.debug.lastPumpLoggedDecision', pumpDecision, true);
-    }
     await this.setStateAsync('status.debug.lastPhDecision', phDecision, true);
   }
 
@@ -951,8 +974,18 @@ class Poolsteuerung extends utils.Adapter {
 
   async onStateChange(id, state) {
     if (!state) return;
+    if (id === this.config.circulationPumpSocketStateId && Date.now() >= (this.suppressOwnPumpStateUntil || 0)) {
+      const scheduleActive = typeof this.isPumpScheduleActive === 'function' ? this.isPumpScheduleActive(new Date()) : false;
+      const val = !!state.val;
+      if (scheduleActive && !val) {
+        this.pumpManualOverride = 'off';
+      } else if (!scheduleActive && val) {
+        this.pumpManualOverride = 'on';
+      } else if ((scheduleActive && val) || (!scheduleActive && !val)) {
+        this.pumpManualOverride = '';
+      }
+    }
     if (this.monitoredIds.includes(id)) {
-      this.debug(`State geändert: ${id}`);
       this.queueRender();
     }
   }
