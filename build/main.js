@@ -109,11 +109,23 @@ class Poolsteuerung extends utils.Adapter {
 
 
   async forceSwitchOffCompat(id) {
-    if (!id) return;
-    try { await this.setSwitchStateCompat(id, false); } catch {}
-    try { await this.setForeignStateAsync(id, false, false); } catch {}
-    try { await this.setForeignStateAsync(id, 0, false); } catch {}
-    try { await this.setForeignStateAsync(id, '0', false); } catch {}
+    if (!id) return false;
+    const attempts = [
+      async () => this.setSwitchStateCompat(id, false),
+      async () => this.setForeignStateAsync(id, false, false),
+      async () => this.setForeignStateAsync(id, 0, false),
+      async () => this.setForeignStateAsync(id, '0', false),
+    ];
+
+    for (const attempt of attempts) {
+      try { await attempt(); } catch {}
+      try {
+        await new Promise(resolve => setTimeout(resolve, 350));
+        const current = await this.getBool(id);
+        if (!current) return true;
+      } catch {}
+    }
+    return false;
   }
 
   async getText(id, fallback = '--') {
@@ -847,19 +859,28 @@ class Poolsteuerung extends utils.Adapter {
     try {
       await this.setSwitchStateCompat(pumpId, true);
       await this.setStateAsync('status.phDose.stopAtTs', stopAtTs, true);
-      setTimeout(async () => {
+
+      const stopLater = async () => {
         try {
           const circOnNow = circulationId ? await this.getBool(circulationId) : false;
           const stopState = await this.getStateAsync('status.phDose.stopAtTs');
           const activeStopAt = Number(stopState && stopState.val) || 0;
           if (!circOnNow || (activeStopAt && Date.now() >= activeStopAt)) {
-            await this.forceSwitchOffCompat(pumpId);
+            const offOk = await this.forceSwitchOffCompat(pumpId);
+            if (!offOk) {
+              this.log.warn('Dosierpumpe ließ sich nicht sicher ausschalten');
+            }
             await this.setStateAsync('status.phDose.stopAtTs', 0, true);
           }
         } catch (e) {
           this.log.warn('Dosierpumpe konnte nicht ausgeschaltet werden: ' + (e.message || e));
         }
-      }, sec * 1000);
+      };
+
+      setTimeout(stopLater, sec * 1000);
+      setTimeout(stopLater, sec * 1000 + 1500);
+      setTimeout(stopLater, sec * 1000 + 4000);
+
       return true;
     } catch (e) {
       this.log.warn('Dosierpumpe konnte nicht eingeschaltet werden: ' + (e.message || e));
