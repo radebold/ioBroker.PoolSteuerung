@@ -72,15 +72,26 @@
       "type": "panel",
       "label": "UMWÄLZ-STEUERUNG",
       "items": {
+        "circStatesHeader": {
+          "type": "header",
+          "text": "Pumpendatenpunkte",
+          "size": 2
+        },
         "circulationPumpSocketStateId": {
-          "type": "text",
-          "label": "Umwälzpumpe",
-          "newLine": true
+          "type": "objectId",
+          "label": "Objekt-ID Pumpensteckdose",
+          "objectTypes": [
+            "state"
+          ],
+          "newLine": true,
+          "sm": 12,
+          "md": 6,
+          "lg": 6
         },
         "circulationPumpWriteMode": {
           "type": "select",
           "label": "Schreibformat Umwälzpumpe",
-          "newLine": true,
+          "newLine": false,
           "options": [
             {
               "label": "false / true",
@@ -91,31 +102,60 @@
               "value": "num01"
             }
           ],
-          "help": "Legt fest, wie der Adapter den Aktor schaltet."
+          "help": "Legt fest, wie der Adapter den Aktor schaltet.",
+          "sm": 12,
+          "md": 6,
+          "lg": 6
         },
-        "pumpWindow1Start": {
+        "circScheduleHeader": {
+          "type": "header",
+          "text": "Zeitfenster",
+          "size": 2
+        },
+        "circulationWindow1Start": {
           "type": "text",
           "label": "Zeitfenster 1 Start",
-          "newLine": true,
-          "help": "Format HH:MM. 00:00 bis 00:00 = inaktiv."
+          "sm": 12,
+          "md": 6,
+          "lg": 6,
+          "newLine": true
         },
-        "pumpWindow1End": {
+        "circulationWindow1End": {
           "type": "text",
           "label": "Zeitfenster 1 Ende",
-          "newLine": true,
-          "help": "Format HH:MM. 00:00 bis 00:00 = inaktiv."
+          "sm": 12,
+          "md": 6,
+          "lg": 6,
+          "newLine": false
         },
-        "pumpWindow2Start": {
+        "circulationWindow2Start": {
           "type": "text",
           "label": "Zeitfenster 2 Start",
-          "newLine": true,
-          "help": "Format HH:MM. 00:00 bis 00:00 = inaktiv."
+          "sm": 12,
+          "md": 6,
+          "lg": 6,
+          "newLine": true
         },
-        "pumpWindow2End": {
+        "circulationWindow2End": {
           "type": "text",
           "label": "Zeitfenster 2 Ende",
+          "sm": 12,
+          "md": 6,
+          "lg": 6,
+          "newLine": false
+        },
+        "circInfoHeader": {
+          "type": "header",
+          "text": "Hinweise",
+          "size": 2
+        },
+        "circInfoText": {
+          "type": "staticText",
+          "text": "00:00 bis 00:00 = inaktiv. Die Pumpe wird nur bei echtem Zeitfensterwechsel automatisch geschaltet.",
           "newLine": true,
-          "help": "Format HH:MM. 00:00 bis 00:00 = inaktiv."
+          "sm": 12,
+          "md": 12,
+          "lg": 12
         }
       }
     },
@@ -123,15 +163,32 @@
       "type": "panel",
       "label": "CHLOR-STEUERUNG",
       "items": {
+        "chlorStatesHeader": {
+          "type": "header",
+          "text": "Sensordaten und Aktor",
+          "size": 2
+        },
         "orpStateId": {
-          "type": "text",
-          "label": "State-ID ORP",
-          "newLine": true
+          "type": "objectId",
+          "label": "State-ID ORP / Redox",
+          "objectTypes": [
+            "state"
+          ],
+          "newLine": true,
+          "sm": 12,
+          "md": 6,
+          "lg": 6
         },
         "chlorinatorSocketStateId": {
-          "type": "text",
+          "type": "objectId",
           "label": "Chlorinator",
-          "newLine": true
+          "objectTypes": [
+            "state"
+          ],
+          "newLine": false,
+          "sm": 12,
+          "md": 6,
+          "lg": 6
         },
         "chlorinatorWriteMode": {
           "type": "select",
@@ -147,24 +204,54 @@
               "value": "num01"
             }
           ],
-          "help": "Legt fest, wie der Adapter den Aktor schaltet."
+          "help": "Legt fest, wie der Adapter den Aktor schaltet.",
+          "sm": 12,
+          "md": 6,
+          "lg": 6
         },
-        "orpSetpoint": {
-          "type": "number",
-          "label": "ORP Sollwert",
-          "newLine": true
+        "chlorRulesHeader": {
+          "type": "header",
+          "text": "Regelung",
+          "size": 2
         },
         "orpOnThreshold": {
           "type": "number",
           "label": "ORP Einschaltgrenze",
           "newLine": true,
-          "help": "Wenn ORP kleiner oder gleich diesem Wert ist, darf der Chlorinator einschalten."
+          "help": "Wenn ORP kleiner oder gleich diesem Wert ist, darf der Chlorinator einschalten.",
+          "sm": 12,
+          "md": 6,
+          "lg": 6
         },
         "orpOffThreshold": {
           "type": "number",
           "label": "ORP Ausschaltgrenze",
+          "newLine": false,
+          "help": "Wenn ORP größer als dieser Wert ist, wird der Chlorinator ausgeschaltet.",
+          "sm": 12,
+          "md": 6,
+          "lg": 6
+        },
+        "chlorOnDelaySec": {
+          "type": "text",
+          "label": "Einschaltverzögerung (Sekunden)",
+          "sm": 12,
+          "md": 6,
+          "lg": 6,
+          "newLine": true
+        },
+        "chlorInfoHeader": {
+          "type": "header",
+          "text": "Hinweise",
+          "size": 2
+        },
+        "chlorInfoText": {
+          "type": "staticText",
+          "text": "Der Chlorinator läuft nur mit aktiver Umwälzpumpe. Zwischen Ein- und Ausschaltgrenze bleibt die Hysterese stabil.",
           "newLine": true,
-          "help": "Wenn ORP größer als dieser Wert ist, wird der Chlorinator ausgeschaltet."
+          "sm": 12,
+          "md": 12,
+          "lg": 12
         }
       }
     },
