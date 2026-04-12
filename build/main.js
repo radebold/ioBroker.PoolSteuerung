@@ -912,9 +912,18 @@ class Poolsteuerung extends utils.Adapter {
     const nowMs = now.getTime();
     const lockRemainingMs = Math.max(0, (lastDoseTs + doseLockMinutes * 60000) - nowMs);
     const dailyCount = await this.getTodayDoseCount(now);
-    const phDoseMode = this.config.phDoseMode || 'fixed';
-    const calcDoseSecRaw = this.calcPhDoseDurationSec(phValue, phSet, phTolerance) || fallbackDoseDurationSec;
-    const calcDoseSec = phDoseMode === 'fixed' ? fallbackDoseDurationSec : calcDoseSecRaw;
+    const phDoseMode = this.config.phDoseMode || 'calculated_simple';
+    let calcDoseSec = fallbackDoseDurationSec;
+    if (phDoseMode === 'fixed') {
+      calcDoseSec = fallbackDoseDurationSec;
+    } else if (phDoseMode === 'calculated_simple') {
+      const savedMl = this.config.phDoseMlPer01Per10m3;
+      this.config.phDoseMlPer01Per10m3 = 0;
+      calcDoseSec = this.calcPhDoseDurationSec(phValue, phSet, phTolerance) || fallbackDoseDurationSec;
+      this.config.phDoseMlPer01Per10m3 = savedMl;
+    } else {
+      calcDoseSec = this.calcPhDoseDurationSec(phValue, phSet, phTolerance) || fallbackDoseDurationSec;
+    }
 
     let phDecision = 'keine Prüfung';
     if (!phEnabled) {
@@ -939,7 +948,7 @@ class Poolsteuerung extends utils.Adapter {
         await this.setStateAsync('status.phDose.lastDoseTs', nowMs, true);
         await this.setStateAsync('status.phDose.lastDoseDurationSec', calcDoseSec, true);
         const newCount = await this.incrementTodayDoseCount(now);
-        phDecision = `${this.config.simulateMode ? 'würde dosieren' : 'dosiert'} ${calcDoseSec}s (${phDoseMode === 'fixed' ? 'fest' : 'berechnet'}) | pH ${phValue} > ${phSet}+${phTolerance} | Tag ${newCount}/${doseMaxPerDay}`;
+        phDecision = `${this.config.simulateMode ? 'würde dosieren' : 'dosiert'} ${calcDoseSec}s (${phDoseMode === 'fixed' ? 'fest' : (phDoseMode === 'calculated_simple' ? 'berechnet einfach' : 'berechnet ml')}) | pH ${phValue} > ${phSet}+${phTolerance} | Tag ${newCount}/${doseMaxPerDay}`;
       } else {
         phDecision = 'Dosierung fehlgeschlagen';
       }
