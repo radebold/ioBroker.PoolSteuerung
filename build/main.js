@@ -804,20 +804,37 @@ class Poolsteuerung extends utils.Adapter {
 
   async runDosePumpOnce(seconds) {
     const pumpId = this.config.phPumpSocketStateId;
-    if (!pumpId || seconds <= 0) return false;
-    if (this.config.simulateMode) return true;
+    const sec = Math.max(1, Number(seconds) || 1);
+    if (!pumpId || sec <= 0) return false;
+
+    await this.ensureState('status.phDose.stopAtTs', 'number', 'value.time', 0, false);
+    const stopAtTs = Date.now() + sec * 1000;
+
+    if (this.config.simulateMode) {
+      await this.setStateAsync('status.phDose.stopAtTs', stopAtTs, true);
+      return true;
+    }
+
     try {
       await this.setSwitchStateCompat(pumpId, true);
+      await this.setStateAsync('status.phDose.stopAtTs', stopAtTs, true);
+
       setTimeout(async () => {
         try {
-          await this.setSwitchStateCompat(pumpId, false);
+          const stopState = await this.getStateAsync('status.phDose.stopAtTs');
+          const activeStopAt = Number(stopState && stopState.val) || 0;
+          if (activeStopAt && Date.now() >= activeStopAt) {
+            await this.setSwitchStateCompat(pumpId, false);
+            await this.setStateAsync('status.phDose.stopAtTs', 0, true);
+          }
         } catch (e) {
-          this.log.warn('Dosierpumpe konnte nicht ausgeschaltet werden: ' + e.message);
+          this.log.warn('Dosierpumpe konnte nicht ausgeschaltet werden: ' + (e.message || e));
         }
-      }, seconds * 1000);
+      }, sec * 1000);
+
       return true;
     } catch (e) {
-      this.log.warn('Dosierpumpe konnte nicht eingeschaltet werden: ' + e.message);
+      this.log.warn('Dosierpumpe konnte nicht eingeschaltet werden: ' + (e.message || e));
       return false;
     }
   }
@@ -873,6 +890,18 @@ class Poolsteuerung extends utils.Adapter {
     const phEnabled = phEnabledMaster && phEnabledState;
     const phPumpId = this.config.phPumpSocketStateId;
     const phPumpCurrent = await this.getBool(phPumpId);
+    await this.ensureState('status.phDose.stopAtTs', 'number', 'value.time', 0, false);
+    const stopAtState = await this.getStateAsync('status.phDose.stopAtTs');
+    const stopAtTs = Number(stopAtState && stopAtState.val) || 0;
+
+    if (!this.config.simulateMode && phPumpCurrent && stopAtTs && Date.now() >= stopAtTs) {
+      try {
+        await this.setSwitchStateCompat(phPumpId, false);
+        await this.setStateAsync('status.phDose.stopAtTs', 0, true);
+      } catch (e) {
+        this.log.warn('PH-Dosierpumpe Stop fehlgeschlagen: ' + (e.message || e));
+      }
+    }
     const fallbackDoseDurationSec = Math.max(1, parseNum(this.config.phDoseDurationSec || 30));
     const doseLockMinutes = Math.max(0, parseNum(this.config.phDoseLockMinutes || 60));
     const doseMaxPerDay = Math.max(1, parseNum(this.config.phDoseMaxPerDay || 4));
