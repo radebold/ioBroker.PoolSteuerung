@@ -51,11 +51,6 @@
           "label": "Umwälzpumpe aktiv",
           "newLine": true
         },
-        "enableChlorControl": {
-          "type": "checkbox",
-          "label": "Chlorsteuerung aktiv",
-          "newLine": true
-        },
         "enablePhControl": {
           "type": "checkbox",
           "label": "PH Steuerung aktiv",
@@ -64,6 +59,11 @@
         "enableHeatpumpControl": {
           "type": "checkbox",
           "label": "Wärmepumpensteuerung aktiv",
+          "newLine": true
+        },
+        "enableChlorControl": {
+          "type": "checkbox",
+          "label": "Chlorsteuerung aktiv",
           "newLine": true
         }
       }
@@ -76,6 +76,22 @@
           "type": "text",
           "label": "Umwälzpumpe",
           "newLine": true
+        },
+        "circulationPumpWriteMode": {
+          "type": "select",
+          "label": "Schreibformat Umwälzpumpe",
+          "newLine": true,
+          "options": [
+            {
+              "label": "false / true",
+              "value": "bool"
+            },
+            {
+              "label": "0 / 1",
+              "value": "num01"
+            }
+          ],
+          "help": "Legt fest, wie der Adapter den Aktor schaltet."
         },
         "pumpWindow1Start": {
           "type": "text",
@@ -117,6 +133,22 @@
           "label": "Chlorinator",
           "newLine": true
         },
+        "chlorinatorWriteMode": {
+          "type": "select",
+          "label": "Schreibformat Chlorinator",
+          "newLine": true,
+          "options": [
+            {
+              "label": "false / true",
+              "value": "bool"
+            },
+            {
+              "label": "0 / 1",
+              "value": "num01"
+            }
+          ],
+          "help": "Legt fest, wie der Adapter den Aktor schaltet."
+        },
         "orpSetpoint": {
           "type": "number",
           "label": "ORP Sollwert",
@@ -133,12 +165,6 @@
           "label": "ORP Ausschaltgrenze",
           "newLine": true,
           "help": "Wenn ORP größer als dieser Wert ist, wird der Chlorinator ausgeschaltet."
-        },
-        "chlorOnDelaySec": {
-          "type": "number",
-          "label": "Einschaltverzögerung (Sekunden)",
-          "newLine": true,
-          "help": "Verzögerung für automatisches Einschalten des Chlorinators."
         }
       }
     },
@@ -160,6 +186,22 @@
           "type": "text",
           "label": "Dosierpumpe",
           "newLine": true
+        },
+        "phPumpWriteMode": {
+          "type": "select",
+          "label": "Schreibformat PH-Dosierpumpe",
+          "newLine": true,
+          "options": [
+            {
+              "label": "false / true",
+              "value": "bool"
+            },
+            {
+              "label": "0 / 1",
+              "value": "num01"
+            }
+          ],
+          "help": "Legt fest, wie der Adapter den Aktor schaltet."
         },
         "phSetpoint": {
           "type": "number",

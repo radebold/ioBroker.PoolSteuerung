@@ -76,10 +76,21 @@ class Poolsteuerung extends utils.Adapter {
 
   async setSwitchStateCompat(id, on) {
     if (!id) return;
+
+    let mode = '';
+    if (id === this.config.circulationPumpSocketStateId) mode = this.config.circulationPumpWriteMode || '';
+    if (id === this.config.chlorinatorSocketStateId) mode = this.config.chlorinatorWriteMode || '';
+    if (id === this.config.phPumpSocketStateId) mode = this.config.phPumpWriteMode || '';
+
     const obj = await this.getForeignObjectAsync(id);
     const common = obj && obj.common ? obj.common : {};
-    let value = on;
-    if (common.type === 'number') {
+    let value;
+
+    if (mode === 'num01') {
+      value = on ? 1 : 0;
+    } else if (mode === 'bool') {
+      value = !!on;
+    } else if (common.type === 'number') {
       value = on ? 1 : 0;
     } else if (common.type === 'string') {
       const states = common.states || {};
@@ -90,6 +101,7 @@ class Poolsteuerung extends utils.Adapter {
     } else {
       value = !!on;
     }
+
     await this.setForeignStateAsync(id, value, false);
   }
 
@@ -350,9 +362,9 @@ class Poolsteuerung extends utils.Adapter {
         <div class="ps-row"><div class="ps-k">WP Freigabe</div><div class="ps-v">${esc(data.heatDecision)}</div></div>
         <div class="ps-row"><div class="ps-k">Chlor Freigabe</div><div class="ps-v">${esc(data.chlorDecision)}</div></div>
         <div class="ps-row"><div class="ps-k">Pumpe Zeitplan</div><div class="ps-v">${esc(data.pumpDecision)}</div></div>
-        <div class="ps-row"><div class="ps-k">PH Freigabe</div><div class="ps-v">${esc(data.phDecision)}</div></div>
-        <div class="ps-row"><div class="ps-k">PH Zeiten</div><div class="ps-v">${esc(data.phTimes)}</div></div>
-        <div class="ps-row"><div class="ps-k">Letzte PH-Dosierung</div><div class="ps-v">${esc(data.phLastDoseDurationSec)} s</div></div>
+        <div class="ps-row"><div class="ps-k">pH Prüfung</div><div class="ps-v">${esc(data.phDecision)}</div></div>
+        <div class="ps-row"><div class="ps-k">pH Zeiten</div><div class="ps-v">${esc(data.phTimes)}</div></div>
+        <div class="ps-row"><div class="ps-k">Letzte Dosierung</div><div class="ps-v">${esc(data.phLastDoseDurationSec)} s</div></div>
       </div>
     </div>
     <div class="ps-card">
@@ -492,9 +504,9 @@ class Poolsteuerung extends utils.Adapter {
       ${item('WP Freigabe', data.heatDecision)}
       ${item('Chlor Freigabe', data.chlorDecision)}
       ${item('Pumpe Zeitplan', data.pumpDecision)}
-      ${item('PH Freigabe', data.phDecision)}
-      ${item('PH Zeiten', data.phTimes)}
-      ${item('Letzte PH-Dosierung', `${data.phLastDoseDurationSec} s`)}
+      ${item('pH Prüfung', data.phDecision)}
+      ${item('pH Zeiten', data.phTimes)}
+      ${item('Letzte Dosierung', `${data.phLastDoseDurationSec} s`)}
     </div>
   </div>
 
@@ -547,49 +559,37 @@ class Poolsteuerung extends utils.Adapter {
     const chlorOnRaw = await this.getBool(this.config.chlorinatorSocketStateId);
     const phPumpOn = await this.getBool(this.config.phPumpSocketStateId);
     const threshold = parseNum(this.config.heatEnableFeedInThresholdW || 1000);
-    const chlorOnDelaySec = Math.max(0, parseNum(this.config.chlorOnDelaySec || 0));
 
     const orpOnThreshold = parseNum(this.config.orpOnThreshold || 725);
     const orpOffThreshold = parseNum(this.config.orpOffThreshold || 750);
 
     let chlorDesired = chlorOnRaw;
     let chlorDecision = '';
+    if (!chlorEnabledMaster) {
+      chlorDesired = chlorOnRaw;
+      chlorDecision = 'Steuerung deaktiviert';
+    }
     const orpNum = parseNum(orp);
 
     if (!chlorEnabledMaster) {
-      chlorDesired = false;
-      chlorDecision = 'Chlorsteuerung deaktiviert';
-      this.lastChlorDemandSince = 0;
+      chlorDecision = 'Steuerung deaktiviert';
     } else if (!pumpOn) {
       chlorDesired = false;
-      chlorDecision = 'Chlorinator AUS (Pumpe AUS)';
-      this.lastChlorDemandSince = 0;
+      chlorDecision = 'Pumpe AUS';
     } else if (!Number.isFinite(orpNum)) {
       chlorDesired = false;
-      chlorDecision = 'Chlorinator AUS (ORP ungültig)';
-      this.lastChlorDemandSince = 0;
+      chlorDecision = 'ORP ungültig';
     } else if (orpNum <= orpOnThreshold) {
-      const nowMs = Date.now();
-      if (!this.lastChlorDemandSince) this.lastChlorDemandSince = nowMs;
-      const elapsedMs = nowMs - this.lastChlorDemandSince;
-      if (elapsedMs >= chlorOnDelaySec * 1000) {
-        chlorDesired = true;
-        chlorDecision = `Chlorinator EIN (ORP <= ${orpOnThreshold})`;
-      } else {
-        chlorDesired = false;
-        chlorDecision = `Warte ${Math.max(0, Math.ceil(chlorOnDelaySec - elapsedMs / 1000))}s auf Chlor-EIN`;
-      }
+      chlorDesired = true;
+      chlorDecision = `ORP niedrig (${orpNum} <= ${orpOnThreshold})`;
     } else if (orpNum > orpOffThreshold) {
       chlorDesired = false;
-      chlorDecision = `Chlorinator AUS (ORP > ${orpOffThreshold})`;
-      this.lastChlorDemandSince = 0;
+      chlorDecision = `ORP hoch (${orpNum} > ${orpOffThreshold})`;
     } else {
-      chlorDesired = chlorOnRaw;
-      chlorDecision = `Hysterese aktiv (${orpOnThreshold}-${orpOffThreshold})`;
-      if (!chlorOnRaw) this.lastChlorDemandSince = 0;
+      chlorDecision = `Hysterese (${orpOnThreshold}-${orpOffThreshold})`;
     }
 
-    if (chlorEnabledMaster && this.config.chlorinatorSocketStateId && chlorDesired !== chlorOnRaw) {
+    if (this.config.chlorinatorSocketStateId && chlorDesired !== chlorOnRaw) {
       try {
         await this.setSwitchStateCompat(this.config.chlorinatorSocketStateId, chlorDesired);
       } catch (e) {
@@ -625,7 +625,6 @@ class Poolsteuerung extends utils.Adapter {
       threshold: this.fmt(threshold, 0, '1000'),
       orpOnThreshold: this.fmt(orpOnThreshold, 0, '725'),
       orpOffThreshold: this.fmt(orpOffThreshold, 0, '750'),
-      chlorOnDelaySec: this.fmt(chlorOnDelaySec, 0, '0'),
       pumpOn,
       pumpScheduleActive,
       chlorOn,
@@ -888,21 +887,21 @@ class Poolsteuerung extends utils.Adapter {
 
     let phDecision = 'keine Prüfung';
     if (!phEnabled) {
-      phDecision = 'PH-Steuerung deaktiviert';
-    } else if (!pumpCurrent) {
-      phDecision = 'PH AUS (Pumpe AUS)';
+      phDecision = 'pH Freigabe AUS';
+    } else if (!pumpTarget) {
+      phDecision = 'Pumpe AUS';
     } else if (!this.isPhCheckDue(now)) {
-      phDecision = `Warte auf Prüfzeit (${this.config.phCheckTimes || '-'})`;
+      phDecision = `warte auf Prüfzeit (${this.config.phCheckTimes || '-'})`;
     } else if (phValue === null || !Number.isFinite(phValue)) {
-      phDecision = 'PH AUS (Wert ungültig)';
+      phDecision = 'pH ungültig';
     } else if (dailyCount >= doseMaxPerDay) {
-      phDecision = `PH AUS (Tageslimit ${dailyCount}/${doseMaxPerDay})`;
+      phDecision = `Tageslimit erreicht (${dailyCount}/${doseMaxPerDay})`;
     } else if (lockRemainingMs > 0) {
-      phDecision = `PH Sperrzeit ${Math.ceil(lockRemainingMs / 60000)} min`;
+      phDecision = `Sperrzeit aktiv (${Math.ceil(lockRemainingMs / 60000)} min)`;
     } else if (phValue <= (phSet + phTolerance)) {
-      phDecision = `PH OK (${phValue} <= ${this.fmt(phSet + phTolerance, 2, '--')})`;
+      phDecision = `pH OK (${phValue} <= ${this.fmt(phSet + phTolerance, 2, '--')})`;
     } else if (phPumpCurrent) {
-      phDecision = 'PH-Dosierpumpe läuft bereits';
+      phDecision = 'Dosierpumpe läuft bereits';
     } else {
       const ok = await this.runDosePumpOnce(calcDoseSec);
       if (ok) {
@@ -911,16 +910,22 @@ class Poolsteuerung extends utils.Adapter {
         const newCount = await this.incrementTodayDoseCount(now);
         phDecision = `${this.config.simulateMode ? 'würde dosieren' : 'dosiert'} ${calcDoseSec}s | pH ${phValue} > ${phSet}+${phTolerance} | Tag ${newCount}/${doseMaxPerDay}`;
       } else {
-        phDecision = 'PH-Dosierung fehlgeschlagen';
+        phDecision = 'Dosierung fehlgeschlagen';
       }
     }
 
+    await this.ensureState('status.debug.lastPumpDecision', 'string', 'text', '', false);
+    await this.ensureState('status.debug.lastPhDecision', 'string', 'text', '', false);
     await this.setStateAsync('status.debug.lastPumpDecision', pumpDecision, true);
-    await this.setStateAsync('status.debug.lastPhDecision', phDecision, true);
-    if (this.config.debugMode && phDecision !== this.lastLoggedPhDecision) {
-      this.debug(`PH: ${phDecision}`);
-      this.lastLoggedPhDecision = phDecision;
+    const lastPumpLoggedDecisionState = await this.getStateAsync('status.debug.lastPumpLoggedDecision');
+    const lastPumpLoggedDecision = lastPumpLoggedDecisionState && lastPumpLoggedDecisionState.val ? String(lastPumpLoggedDecisionState.val) : '';
+    const ownWriteSuppressed = Date.now() < (this.suppressOwnPumpLogUntil || 0);
+    const shouldLogPump = !ownWriteSuppressed && (scheduleEdge || pumpDecision !== lastPumpLoggedDecision || pumpDecision.startsWith('Schaltfehler'));
+    if (shouldLogPump) {
+      this.debug(`Pumpenentscheidung: ${pumpDecision} | zeitfenster=${pumpTarget ? 'aktiv' : 'inaktiv'} | ist=${pumpCurrent ? 'ein' : 'aus'} | edge=${scheduleEdge ? 'ja' : 'nein'}`);
+      await this.setStateAsync('status.debug.lastPumpLoggedDecision', pumpDecision, true);
     }
+    await this.setStateAsync('status.debug.lastPhDecision', phDecision, true);
   }
 
   async onReady() {
