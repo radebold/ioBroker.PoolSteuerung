@@ -208,6 +208,22 @@
           "label": "pH Sollwert",
           "newLine": true
         },
+        "phDoseMode": {
+          "type": "select",
+          "label": "Modus PH-Dosierung",
+          "newLine": true,
+          "options": [
+            {
+              "label": "fest",
+              "value": "fixed"
+            },
+            {
+              "label": "berechnet",
+              "value": "calculated"
+            }
+          ],
+          "help": "fest = feste Laufzeit je Prüfzeitpunkt. berechnet = Laufzeit abhängig von pH-Abweichung und Poolvolumen."
+        },
         "phCheckTimes": {
           "type": "text",
           "label": "pH Prüfzeiten",
@@ -222,9 +238,9 @@
         },
         "phDoseDurationSec": {
           "type": "number",
-          "label": "Dosierdauer je Zyklus (Sekunden)",
+          "label": "Feste Dosierdauer je Prüfzeitpunkt (Sekunden)",
           "newLine": true,
-          "help": "Laufzeit der Dosierpumpe pro aktivem Prüfzeitpunkt."
+          "help": "Wird im Modus \"fest\" exakt so verwendet."
         },
         "phDoseLockMinutes": {
           "type": "number",
@@ -246,21 +262,21 @@
         },
         "phDoseMaxDurationSec": {
           "type": "number",
-          "label": "Max. Dosierdauer je Zyklus (Sekunden)",
+          "label": "Max. Dosierdauer im Modus \"berechnet\" (Sekunden)",
           "newLine": true,
           "help": "Obergrenze für die berechnete Dosierdauer."
         },
         "phDoseMlPer01Per10m3": {
           "type": "number",
-          "label": "ml pro 0,1 pH je 10 m³",
+          "label": "ml pro 0,1 pH je 10 m³ (Modus \"berechnet\")",
           "newLine": true,
-          "help": "Alternative, realitätsnähere Berechnung auf ml-Basis."
+          "help": "Alternative Berechnung im ml-Modus."
         },
         "phPumpFlowMlPerMin": {
           "type": "number",
-          "label": "Fördermenge Dosierpumpe (ml/min)",
+          "label": "Fördermenge Dosierpumpe (ml/min, Modus \"berechnet\")",
           "newLine": true,
-          "help": "Wird genutzt, um aus ml eine Laufzeit in Sekunden zu berechnen."
+          "help": "Nur im Modus \"berechnet\" relevant."
         }
       }
     },

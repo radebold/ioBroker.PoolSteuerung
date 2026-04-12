@@ -2,7 +2,7 @@
   "common": {
     "name": "poolsteuerung",
     "title": "Poolsteuerung",
-    "version": "0.3.10-hotfix11",
+    "version": "0.3.10-hotfix12",
     "icon": "poolsteuerung.png",
     "mode": "daemon",
     "type": "hardware",
@@ -38,6 +38,7 @@
     "enableChlorControl": true,
     "circulationPumpWriteMode": "bool",
     "chlorinatorWriteMode": "bool",
-    "phPumpWriteMode": "bool"
+    "phPumpWriteMode": "bool",
+    "phDoseMode": "fixed"
   }
 }

@@ -912,7 +912,9 @@ class Poolsteuerung extends utils.Adapter {
     const nowMs = now.getTime();
     const lockRemainingMs = Math.max(0, (lastDoseTs + doseLockMinutes * 60000) - nowMs);
     const dailyCount = await this.getTodayDoseCount(now);
-    const calcDoseSec = this.calcPhDoseDurationSec(phValue, phSet, phTolerance) || fallbackDoseDurationSec;
+    const phDoseMode = this.config.phDoseMode || 'fixed';
+    const calcDoseSecRaw = this.calcPhDoseDurationSec(phValue, phSet, phTolerance) || fallbackDoseDurationSec;
+    const calcDoseSec = phDoseMode === 'fixed' ? fallbackDoseDurationSec : calcDoseSecRaw;
 
     let phDecision = 'keine Prüfung';
     if (!phEnabled) {
@@ -937,7 +939,7 @@ class Poolsteuerung extends utils.Adapter {
         await this.setStateAsync('status.phDose.lastDoseTs', nowMs, true);
         await this.setStateAsync('status.phDose.lastDoseDurationSec', calcDoseSec, true);
         const newCount = await this.incrementTodayDoseCount(now);
-        phDecision = `${this.config.simulateMode ? 'würde dosieren' : 'dosiert'} ${calcDoseSec}s | pH ${phValue} > ${phSet}+${phTolerance} | Tag ${newCount}/${doseMaxPerDay}`;
+        phDecision = `${this.config.simulateMode ? 'würde dosieren' : 'dosiert'} ${calcDoseSec}s (${phDoseMode === 'fixed' ? 'fest' : 'berechnet'}) | pH ${phValue} > ${phSet}+${phTolerance} | Tag ${newCount}/${doseMaxPerDay}`;
       } else {
         phDecision = 'Dosierung fehlgeschlagen';
       }
