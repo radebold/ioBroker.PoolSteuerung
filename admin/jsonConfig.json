@@ -92,6 +92,9 @@
           "type": "select",
           "label": "Schreibformat Umwälzpumpe",
           "newLine": false,
+          "sm": 12,
+          "md": 6,
+          "lg": 6,
           "options": [
             {
               "label": "false / true",
@@ -102,47 +105,44 @@
               "value": "num01"
             }
           ],
-          "help": "Legt fest, wie der Adapter den Aktor schaltet.",
-          "sm": 12,
-          "md": 6,
-          "lg": 6
+          "help": "Legt fest, wie der Adapter den Aktor schaltet."
         },
         "circScheduleHeader": {
           "type": "header",
           "text": "Zeitfenster",
           "size": 2
         },
-        "circulationWindow1Start": {
+        "pumpWindow1Start": {
           "type": "text",
           "label": "Zeitfenster 1 Start",
+          "newLine": true,
           "sm": 12,
           "md": 6,
-          "lg": 6,
-          "newLine": true
+          "lg": 6
         },
-        "circulationWindow1End": {
+        "pumpWindow1End": {
           "type": "text",
           "label": "Zeitfenster 1 Ende",
+          "newLine": false,
           "sm": 12,
           "md": 6,
-          "lg": 6,
-          "newLine": false
+          "lg": 6
         },
-        "circulationWindow2Start": {
+        "pumpWindow2Start": {
           "type": "text",
           "label": "Zeitfenster 2 Start",
+          "newLine": true,
           "sm": 12,
           "md": 6,
-          "lg": 6,
-          "newLine": true
+          "lg": 6
         },
-        "circulationWindow2End": {
+        "pumpWindow2End": {
           "type": "text",
           "label": "Zeitfenster 2 Ende",
+          "newLine": false,
           "sm": 12,
           "md": 6,
-          "lg": 6,
-          "newLine": false
+          "lg": 6
         },
         "circInfoHeader": {
           "type": "header",
