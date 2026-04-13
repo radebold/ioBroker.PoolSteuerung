@@ -866,26 +866,14 @@ class Poolsteuerung extends utils.Adapter {
     await this.setStateAsync('status.debug.lastPhStartInfo', msg, true);
     if (this.config.debugMode) this.log.info(msg);
 
-    const stopLater = async (reason) => {
-      try {
-        const circOnNow = circulationId ? await this.getBool(circulationId) : false;
-        const stopState = await this.getStateAsync('status.phDose.stopAtTs');
-        const activeStopAt = Number(stopState && stopState.val) || 0;
-        if (!circOnNow || (activeStopAt && Date.now() >= activeStopAt)) {
-          const offOk = await this.forceSwitchOffCompat(pumpId);
-          await this.setStateAsync('status.phDose.stopAtTs', 0, true);
-          if (this.config.debugMode) {
-            this.log.info(`[PH] Dosierpumpe ${offOk ? 'AUS' : 'AUS fehlgeschlagen'} | Grund ${!circOnNow ? 'Umwälzpumpe AUS' : reason}`);
-          }
-        }
-      } catch (e) {
-        this.log.warn('[PH] Dosierpumpe konnte nicht ausgeschaltet werden: ' + (e.message || e));
-      }
+    const stopLater = async () => {
+      await this.enforcePhStopIfDue();
     };
 
-    setTimeout(() => stopLater('Sollzeit erreicht'), sec * 1000);
-    setTimeout(() => stopLater('Nachkontrolle 1'), sec * 1000 + 1500);
-    setTimeout(() => stopLater('Nachkontrolle 2'), sec * 1000 + 4000);
+    setTimeout(stopLater, sec * 1000);
+    setTimeout(stopLater, sec * 1000 + 1500);
+    setTimeout(stopLater, sec * 1000 + 4000);
+    setTimeout(stopLater, sec * 1000 + 8000);
 
     return true;
   }
@@ -1014,6 +1002,33 @@ class Poolsteuerung extends utils.Adapter {
     await this.setStateAsync('status.debug.lastPhDecision', phDecision, true);
   }
 
+
+  async enforcePhStopIfDue() {
+    try {
+      const phPumpId = this.config.phPumpSocketStateId;
+      if (!phPumpId) return;
+      await this.ensureState('status.phDose.stopAtTs', 'number', 'value.time', 0, false);
+      const stopAtState = await this.getStateAsync('status.phDose.stopAtTs');
+      const stopAtTs = Number(stopAtState && stopAtState.val) || 0;
+      if (!stopAtTs) return;
+
+      const phPumpCurrent = await this.getBool(phPumpId);
+      const pumpCurrent = this.config.circulationPumpSocketStateId
+        ? await this.getBool(this.config.circulationPumpSocketStateId)
+        : false;
+
+      if (phPumpCurrent && (!pumpCurrent || Date.now() >= stopAtTs)) {
+        const offOk = await this.forceSwitchOffCompat(phPumpId);
+        await this.setStateAsync('status.phDose.stopAtTs', 0, true);
+        if (this.config.debugMode) {
+          this.log.info(`[PH] Dosierpumpe ${offOk ? 'AUS' : 'AUS fehlgeschlagen'} | Grund ${!pumpCurrent ? 'Umwälzpumpe AUS' : 'Sollzeit erreicht'}`);
+        }
+      }
+    } catch (e) {
+      this.log.warn('[PH] Stop-Überwachung fehlgeschlagen: ' + (e.message || e));
+    }
+  }
+
   async onReady() {
     try {
       await this.ensureState('info.connection', 'boolean', 'indicator.connected', false, false);
@@ -1027,7 +1042,12 @@ class Poolsteuerung extends utils.Adapter {
       }
       await this.renderVis();
       const pollMin = Math.max(1, Number(this.config.pollIntervalMin) || 1);
-      this.timer = setInterval(async () => {
+      if (this.phStopWatcher) clearInterval(this.phStopWatcher);
+    this.phStopWatcher = setInterval(async () => {
+      await this.enforcePhStopIfDue();
+    }, 1000);
+
+    this.timer = setInterval(async () => {
         try {
           await this.setStateAsync('status.debug.lastCycle', new Date().toISOString(), true);
           await this.updateComputedStates();
