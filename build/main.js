@@ -948,8 +948,9 @@ class Poolsteuerung extends utils.Adapter {
     await this.ensureState('status.phDose.stopAtTs', 'number', 'value.time', 0, false);
     await this.ensureState('status.debug.lastPhStartInfo', 'string', 'text', '', false);
     const stopAtTs = await this.getEffectivePhStopAtTs(phPumpCurrent);
+    const phDoseActive = !!stopAtTs && Date.now() < stopAtTs;
 
-    if (!this.config.simulateMode && phPumpCurrent && (!pumpCurrent || (stopAtTs && Date.now() >= stopAtTs))) {
+    if (!this.config.simulateMode && (phPumpCurrent || phDoseActive) && (!pumpCurrent || (stopAtTs && Date.now() >= stopAtTs))) {
       await this.enforcePhStopIfDue();
     }
 
@@ -974,7 +975,7 @@ class Poolsteuerung extends utils.Adapter {
     if (!phEnabled) {
       phDecision = 'pH Freigabe AUS';
     } else if (!pumpCurrent) {
-      phDecision = phPumpCurrent ? 'PH-Dosierung gestoppt (Umwälzpumpe AUS)' : 'Pumpe AUS';
+      phDecision = (phPumpCurrent || phDoseActive) ? 'PH-Dosierung gestoppt (Umwälzpumpe AUS)' : 'Pumpe AUS';
     } else if (!this.isPhCheckDue(now)) {
       phDecision = `warte auf Prüfzeit (${this.config.phCheckTimes || '-'})`;
     } else if (phValue === null || !Number.isFinite(phValue)) {
@@ -1048,12 +1049,12 @@ class Poolsteuerung extends utils.Adapter {
     const stateTs = Number(s && s.val) || 0;
     const memTs = Number(this.phDoseStopAtTsMemory) || 0;
 
-    // Use memory as fallback for stop logic, but do not constantly rewrite the state.
-    if (phPumpCurrent && !stateTs && memTs) {
+    if (phPumpCurrent && memTs) {
       return memTs;
     }
     return Math.max(stateTs, memTs);
   }
+
 
 
   async resetPhDoseState(reason = '') {
@@ -1073,7 +1074,8 @@ class Poolsteuerung extends utils.Adapter {
         ? await this.getBool(this.config.circulationPumpSocketStateId)
         : false;
 
-      if (phPumpCurrent && (!pumpCurrent || Date.now() >= stopAtTs)) {
+      if ((phPumpCurrent || (this.phDoseStopAtTsMemory && Date.now() < this.phDoseStopAtTsMemory + 60000))
+          && (!pumpCurrent || Date.now() >= stopAtTs)) {
         const offOk = await this.forceSwitchOffCompat(phPumpId);
         if (offOk) {
           await this.setPhStopAtTs(0, !pumpCurrent ? 'PH-AUS bestätigt wegen Umwälzpumpe AUS' : 'PH-AUS bestätigt wegen Sollzeit');
@@ -1087,6 +1089,7 @@ class Poolsteuerung extends utils.Adapter {
       this.log.warn('[PH] Stop-Überwachung fehlgeschlagen: ' + (e.message || e));
     }
   }
+
 
 
   async onReady() {
