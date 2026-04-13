@@ -76,10 +76,21 @@ class Poolsteuerung extends utils.Adapter {
 
   async setSwitchStateCompat(id, on) {
     if (!id) return;
+
+    let mode = '';
+    if (id === this.config.circulationPumpSocketStateId) mode = this.config.circulationPumpWriteMode || '';
+    if (id === this.config.chlorinatorSocketStateId) mode = this.config.chlorinatorWriteMode || '';
+    if (id === this.config.phPumpSocketStateId) mode = this.config.phPumpWriteMode || '';
+
     const obj = await this.getForeignObjectAsync(id);
     const common = obj && obj.common ? obj.common : {};
-    let value = on;
-    if (common.type === 'number') {
+    let value;
+
+    if (mode === 'num01') {
+      value = on ? 1 : 0;
+    } else if (mode === 'bool') {
+      value = !!on;
+    } else if (common.type === 'number') {
       value = on ? 1 : 0;
     } else if (common.type === 'string') {
       const states = common.states || {};
@@ -90,6 +101,7 @@ class Poolsteuerung extends utils.Adapter {
     } else {
       value = !!on;
     }
+
     await this.setForeignStateAsync(id, value, false);
   }
 
@@ -836,11 +848,13 @@ class Poolsteuerung extends utils.Adapter {
     if (!pumpId || sec <= 0) return false;
 
     await this.ensureState('status.phDose.stopAtTs', 'number', 'value.time', 0, false);
+    await this.ensureState('status.phDose.lastDoseTs', 'number', 'value.time', 0, false);
+    await this.ensureState('status.phDose.lastDoseDurationSec', 'number', 'value.interval', 0, false);
     await this.ensureState('status.debug.lastPhStartInfo', 'string', 'text', '', false);
 
     const circulationOn = circulationId ? await this.getBool(circulationId) : false;
     if (!circulationOn) {
-      await this.setStateAsync('status.phDose.stopAtTs', 0, true);
+      await this.resetPhDoseState();
       if (this.config.debugMode) this.log.info('[PH] Dosierung nicht gestartet: Umwälzpumpe AUS');
       return false;
     }
@@ -849,7 +863,9 @@ class Poolsteuerung extends utils.Adapter {
 
     if (this.config.simulateMode) {
       await this.setStateAsync('status.phDose.stopAtTs', stopAtTs, true);
-      const msg = `[PH] würde dosieren | Prüfzeit ${context.checkTime || '-'} | pH=${context.phValue ?? '-'} | Laufzeit=${sec}s`;
+      await this.setStateAsync('status.phDose.lastDoseTs', Date.now(), true);
+      await this.setStateAsync('status.phDose.lastDoseDurationSec', sec, true);
+      const msg = `[PH] würde dosieren | Prüfzeit ${context.checkTime || '-'} | pH=${context.phValue ?? '-'} | Laufzeit=${sec}s | Stop um ${new Date(stopAtTs).toLocaleTimeString('de-DE')}`;
       await this.setStateAsync('status.debug.lastPhStartInfo', msg, true);
       if (this.config.debugMode) this.log.info(msg);
       return true;
@@ -862,14 +878,14 @@ class Poolsteuerung extends utils.Adapter {
     }
 
     await this.setStateAsync('status.phDose.stopAtTs', stopAtTs, true);
+    await this.setStateAsync('status.phDose.lastDoseTs', Date.now(), true);
+    await this.setStateAsync('status.phDose.lastDoseDurationSec', sec, true);
+
     const msg = `[PH] Dosierpumpe EIN | Prüfzeit ${context.checkTime || '-'} | pH=${context.phValue ?? '-'} | Laufzeit=${sec}s | Stop um ${new Date(stopAtTs).toLocaleTimeString('de-DE')}`;
     await this.setStateAsync('status.debug.lastPhStartInfo', msg, true);
     if (this.config.debugMode) this.log.info(msg);
 
-    const stopLater = async () => {
-      await this.enforcePhStopIfDue();
-    };
-
+    const stopLater = async () => { await this.enforcePhStopIfDue(); };
     setTimeout(stopLater, sec * 1000);
     setTimeout(stopLater, sec * 1000 + 1500);
     setTimeout(stopLater, sec * 1000 + 4000);
@@ -935,11 +951,7 @@ class Poolsteuerung extends utils.Adapter {
     const stopAtTs = Number(stopAtState && stopAtState.val) || 0;
 
     if (!this.config.simulateMode && phPumpCurrent && (!pumpCurrent || (stopAtTs && Date.now() >= stopAtTs))) {
-      const offOk = await this.forceSwitchOffCompat(phPumpId);
-      await this.setStateAsync('status.phDose.stopAtTs', 0, true);
-      if (this.config.debugMode) {
-        this.log.info(`[PH] Dosierpumpe ${offOk ? 'AUS' : 'AUS fehlgeschlagen'} | Grund ${!pumpCurrent ? 'Umwälzpumpe AUS' : 'Sollzeit erreicht'}`);
-      }
+      await this.enforcePhStopIfDue();
     }
 
     const fallbackDoseDurationSec = Math.max(1, parseNum(this.config.phDoseDurationSec || 30));
@@ -979,8 +991,6 @@ class Poolsteuerung extends utils.Adapter {
     } else {
       const ok = await this.runDosePumpOnce(calcDoseSec, { checkTime: currentHHMM, phValue });
       if (ok) {
-        await this.setStateAsync('status.phDose.lastDoseTs', nowMs, true);
-        await this.setStateAsync('status.phDose.lastDoseDurationSec', calcDoseSec, true);
         const newCount = await this.incrementTodayDoseCount(now);
         phDecision = `${this.config.simulateMode ? 'würde dosieren' : 'dosiert'} ${calcDoseSec}s | pH ${phValue} > ${phSet}+${phTolerance} | Tag ${newCount}/${doseMaxPerDay}`;
       } else {
@@ -1003,6 +1013,15 @@ class Poolsteuerung extends utils.Adapter {
   }
 
 
+  async resetPhDoseState() {
+    await this.ensureState('status.phDose.stopAtTs', 'number', 'value.time', 0, false);
+    await this.ensureState('status.phDose.lastDoseTs', 'number', 'value.time', 0, false);
+    await this.ensureState('status.phDose.lastDoseDurationSec', 'number', 'value.interval', 0, false);
+    await this.setStateAsync('status.phDose.stopAtTs', 0, true);
+    await this.setStateAsync('status.phDose.lastDoseTs', 0, true);
+    await this.setStateAsync('status.phDose.lastDoseDurationSec', 0, true);
+  }
+
   async enforcePhStopIfDue() {
     try {
       const phPumpId = this.config.phPumpSocketStateId;
@@ -1019,9 +1038,13 @@ class Poolsteuerung extends utils.Adapter {
 
       if (phPumpCurrent && (!pumpCurrent || Date.now() >= stopAtTs)) {
         const offOk = await this.forceSwitchOffCompat(phPumpId);
-        await this.setStateAsync('status.phDose.stopAtTs', 0, true);
-        if (this.config.debugMode) {
-          this.log.info(`[PH] Dosierpumpe ${offOk ? 'AUS' : 'AUS fehlgeschlagen'} | Grund ${!pumpCurrent ? 'Umwälzpumpe AUS' : 'Sollzeit erreicht'}`);
+        if (offOk) {
+          await this.resetPhDoseState();
+          if (this.config.debugMode) {
+            this.log.info(`[PH] Dosierpumpe AUS | Grund ${!pumpCurrent ? 'Umwälzpumpe AUS' : 'Sollzeit erreicht'}`);
+          }
+        } else if (this.config.debugMode) {
+          this.log.warn(`[PH] Dosierpumpe AUS fehlgeschlagen | Grund ${!pumpCurrent ? 'Umwälzpumpe AUS' : 'Sollzeit erreicht'}`);
         }
       }
     } catch (e) {
