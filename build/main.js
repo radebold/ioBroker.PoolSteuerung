@@ -25,6 +25,7 @@ class Poolsteuerung extends utils.Adapter {
     this.phStopWatcher = null;
     this.phRecheckTimer = null;
     this.phDoseStopAtTsMemory = 0;
+    this.phRecheckTargetTs = 0;
     this.phLastDoseTsMemory = 0;
     this.phLastDoseDurationSecMemory = 0;
     this.lastWrittenPhStopAtTs = null;
@@ -831,16 +832,24 @@ class Poolsteuerung extends utils.Adapter {
       clearTimeout(this.phRecheckTimer);
       this.phRecheckTimer = null;
     }
+    this.phRecheckTargetTs = 0;
   }
 
   schedulePhRecheck(ts, reason = '') {
-    this.clearPhRecheckTimer();
     const targetTs = Number(ts) || 0;
     if (!targetTs) return;
+
+    if (this.phRecheckTimer && this.phRecheckTargetTs && Math.abs(this.phRecheckTargetTs - targetTs) < 1000) {
+      return;
+    }
+
+    this.clearPhRecheckTimer();
+    this.phRecheckTargetTs = targetTs;
 
     const delay = Math.max(250, targetTs - Date.now());
     this.phRecheckTimer = setTimeout(async () => {
       this.phRecheckTimer = null;
+      this.phRecheckTargetTs = 0;
       try {
         await this.updateComputedStates();
         if (typeof this.applyControlLogic === 'function') {
@@ -1044,7 +1053,9 @@ class Poolsteuerung extends utils.Adapter {
     const evaluationDue = scheduledDue || followUpDue;
     const evaluationReason = followUpDue ? 'Folgeprüfung nach Sperrzeit' : (scheduledDue ? `Prüfzeit ${currentHHMM}` : 'keine fällige Prüfung');
 
-    if (followUpEnabled && lockRemainingMs > 0) {
+    const withinDoseLock = followUpEnabled && lockRemainingMs > 0;
+
+    if (withinDoseLock) {
       this.schedulePhRecheck(nextFollowUpTs, 'pH Folgeprüfung nach Dosierung');
     } else if (!phDoseActive) {
       this.clearPhRecheckTimer();
@@ -1062,6 +1073,9 @@ class Poolsteuerung extends utils.Adapter {
     } else if (dailyCount >= doseMaxPerDay) {
       this.clearPhRecheckTimer();
       phDecision = `Tageslimit erreicht (${dailyCount}/${doseMaxPerDay})`;
+    } else if (withinDoseLock) {
+      const whenText = new Date(nextFollowUpTs).toLocaleTimeString('de-DE');
+      phDecision = `Sperrzeit aktiv (${Math.ceil(lockRemainingMs / 60000)} min) | Folgeprüfung um ${whenText}`;
     } else if (!evaluationDue) {
       if (followUpEnabled && nextFollowUpTs > 0) {
         const whenText = new Date(nextFollowUpTs).toLocaleTimeString('de-DE');
@@ -1118,6 +1132,7 @@ class Poolsteuerung extends utils.Adapter {
 
     if (num === 0) {
       this.phDoseStopAtTsMemory = 0;
+    this.phRecheckTargetTs = 0;
     } else {
       this.phDoseStopAtTsMemory = num;
     }
@@ -1188,6 +1203,7 @@ class Poolsteuerung extends utils.Adapter {
         if (offOk) {
           await this.setPhStopAtTs(0, !pumpCurrent ? 'PH-AUS bestätigt wegen Umwälzpumpe AUS' : 'PH-AUS bestätigt wegen Sollzeit');
           this.phDoseStopAtTsMemory = 0;
+    this.phRecheckTargetTs = 0;
           this.lastWrittenPhStopAtTs = null;
           this.log.info(`[PH] Dosierpumpe AUS | Grund ${!pumpCurrent ? 'Umwälzpumpe AUS' : 'Sollzeit erreicht'}`);
         } else if (this.config.debugMode) {
