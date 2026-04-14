@@ -866,6 +866,125 @@ class Poolsteuerung extends utils.Adapter {
     }
   }
 
+
+  formatLogDateTime(ts) {
+    const n = Number(ts) || 0;
+    if (!n) return 'keine';
+    return new Date(n).toLocaleString('de-DE', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+  }
+
+  getNextConfiguredTimeTs(timesText, now = new Date()) {
+    const list = String(timesText || '').split(',').map(v => v.trim()).filter(Boolean);
+    if (!list.length) return 0;
+    let best = 0;
+    for (const item of list) {
+      const parsed = this.parseHHMM(item);
+      if (parsed === null) continue;
+      const hh = Math.floor(parsed / 60);
+      const mm = parsed % 60;
+      for (let dayOffset = 0; dayOffset <= 2; dayOffset++) {
+        const d = new Date(now);
+        d.setDate(d.getDate() + dayOffset);
+        d.setHours(hh, mm, 0, 0);
+        const ts = d.getTime();
+        if (ts > now.getTime() && (!best || ts < best)) {
+          best = ts;
+        }
+      }
+    }
+    return best;
+  }
+
+  getNextPumpAction(now = new Date()) {
+    const windows = [
+      { label: 'Fenster 1', start: this.config.pumpWindow1Start, end: this.config.pumpWindow1End },
+      { label: 'Fenster 2', start: this.config.pumpWindow2Start, end: this.config.pumpWindow2End }
+    ];
+    let best = null;
+
+    for (const w of windows) {
+      const start = this.parseHHMM(w.start);
+      const end = this.parseHHMM(w.end);
+      if (start === null || end === null || start === end || (start === 0 && end === 0)) continue;
+
+      const events = [
+        { kind: 'EIN', minutes: start },
+        { kind: 'AUS', minutes: end }
+      ];
+
+      for (const event of events) {
+        for (let dayOffset = 0; dayOffset <= 2; dayOffset++) {
+          const d = new Date(now);
+          d.setDate(d.getDate() + dayOffset);
+          d.setHours(Math.floor(event.minutes / 60), event.minutes % 60, 0, 0);
+          const ts = d.getTime();
+          if (ts <= now.getTime()) continue;
+          if (!best || ts < best.ts) {
+            best = { ts, action: event.kind, source: w.label };
+          }
+        }
+      }
+    }
+    return best;
+  }
+
+  async logStartupScheduleSummary() {
+    const now = new Date();
+    const pollMin = Math.max(1, Number(this.config.pollIntervalMin) || 1);
+    const nextPollTs = now.getTime() + pollMin * 60000;
+
+    let pumpNow = false;
+    try {
+      pumpNow = this.config.circulationPumpSocketStateId ? await this.getBool(this.config.circulationPumpSocketStateId) : false;
+    } catch {}
+    const nextPump = this.getNextPumpAction(now);
+
+    const nextFixedPhTs = this.getNextConfiguredTimeTs(this.config.phCheckTimes || '', now);
+    const lastDoseTsState = await this.getStateAsync('status.phDose.lastDoseTs');
+    const lastDoseDurationState = await this.getStateAsync('status.phDose.lastDoseDurationSec');
+    const stopAtState = await this.getStateAsync('status.phDose.stopAtTs');
+    const dailyCountState = await this.getStateAsync('status.phDose.dailyCount');
+    const lastDoseTs = Number(lastDoseTsState && lastDoseTsState.val) || 0;
+    const lastDoseDurationSec = Number(lastDoseDurationState && lastDoseDurationState.val) || 0;
+    const stopAtTs = Number(stopAtState && stopAtState.val) || 0;
+    const dailyCount = Number(dailyCountState && dailyCountState.val) || 0;
+    const nextFollowUpTs = this.getNextPhFollowUpTs(lastDoseTs, lastDoseDurationSec);
+    const hasFutureFollowUp = nextFollowUpTs > now.getTime();
+    const nextPhEvalTs = hasFutureFollowUp && nextFixedPhTs ? Math.min(nextFollowUpTs, nextFixedPhTs) : (hasFutureFollowUp ? nextFollowUpTs : nextFixedPhTs);
+
+    this.log.info('===== PoolSteuerung Start-Zusammenfassung =====');
+    this.log.info(`[START] Umwälzpumpe jetzt: ${pumpNow ? 'EIN' : 'AUS'}${nextPump ? ` | nächste Aktion: ${nextPump.action} am ${this.formatLogDateTime(nextPump.ts)} (${nextPump.source})` : ' | keine nächste Aktion geplant'}`);
+    this.log.info(`[START] Chlor-Steuerung: nächste Prüfung gegen ${this.formatLogDateTime(nextPollTs)} | Poll ${pollMin} min`);
+
+    if (stopAtTs > now.getTime()) {
+      this.log.info(`[START] pH-Dosierung läuft aktuell bis ${this.formatLogDateTime(stopAtTs)}`);
+    }
+
+    if (nextPhEvalTs) {
+      let source = 'nächste pH-Prüfung';
+      if (hasFutureFollowUp && nextPhEvalTs === nextFollowUpTs) source = 'pH-Folgeprüfung nach Dosierung';
+      else if (nextFixedPhTs && nextPhEvalTs === nextFixedPhTs) source = 'konfigurierte pH-Prüfzeit';
+      this.log.info(`[START] pH-Steuerung: nächste Prüfung ${this.formatLogDateTime(nextPhEvalTs)} | Quelle: ${source}`);
+    } else {
+      this.log.info('[START] pH-Steuerung: keine nächste Prüfung geplant');
+    }
+
+    if (lastDoseTs) {
+      this.log.info(`[START] pH letzte Dosierung: ${this.formatLogDateTime(lastDoseTs)} | Tageszähler: ${dailyCount}`);
+    } else {
+      this.log.info(`[START] pH letzte Dosierung: keine | Tageszähler: ${dailyCount}`);
+    }
+    this.log.info('===============================================');
+  }
+
   async getTodayDoseCount(now = new Date()) {
     await this.ensureState('status.phDose.dayKey', 'string', 'text', '', false);
     await this.ensureState('status.phDose.dailyCount', 'number', 'value', 0, false);
@@ -1239,6 +1358,7 @@ class Poolsteuerung extends utils.Adapter {
       if (resumeFollowUpTs > Date.now() && this.getTodayKey(new Date(resumeLastDoseTs)) === this.getTodayKey(new Date())) {
         this.schedulePhRecheck(resumeFollowUpTs, 'wiederhergestellt nach Adapterstart');
       }
+      await this.logStartupScheduleSummary();
       const pollMin = Math.max(1, Number(this.config.pollIntervalMin) || 1);
       if (this.phStopWatcher) clearInterval(this.phStopWatcher);
       this.phStopWatcher = setInterval(async () => {
