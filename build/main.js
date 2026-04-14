@@ -22,6 +22,12 @@ class Poolsteuerung extends utils.Adapter {
   constructor(options = {}) {
     super({ ...options, name: 'poolsteuerung' });
     this.timer = null;
+    this.phStopWatcher = null;
+    this.phRecheckTimer = null;
+    this.phDoseStopAtTsMemory = 0;
+    this.phLastDoseTsMemory = 0;
+    this.phLastDoseDurationSecMemory = 0;
+    this.lastWrittenPhStopAtTs = null;
     this.monitoredIds = [];
     this.renderQueued = false;
     this.on('ready', this.onReady.bind(this));
@@ -801,9 +807,54 @@ class Poolsteuerung extends utils.Adapter {
     return list.includes(current);
   }
 
-
   getTodayKey(now = new Date()) {
-    return now.toISOString().slice(0, 10);
+    const d = now instanceof Date ? now : new Date(now);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  getDoseLockMs() {
+    return Math.max(0, parseNum(this.config.phDoseLockMinutes || 60)) * 60000;
+  }
+
+  getNextPhFollowUpTs(lastDoseTs, lastDoseDurationSec) {
+    const ts = Number(lastDoseTs) || 0;
+    const durationMs = Math.max(0, Number(lastDoseDurationSec) || 0) * 1000;
+    if (!ts) return 0;
+    return ts + durationMs + this.getDoseLockMs();
+  }
+
+  clearPhRecheckTimer() {
+    if (this.phRecheckTimer) {
+      clearTimeout(this.phRecheckTimer);
+      this.phRecheckTimer = null;
+    }
+  }
+
+  schedulePhRecheck(ts, reason = '') {
+    this.clearPhRecheckTimer();
+    const targetTs = Number(ts) || 0;
+    if (!targetTs) return;
+
+    const delay = Math.max(250, targetTs - Date.now());
+    this.phRecheckTimer = setTimeout(async () => {
+      this.phRecheckTimer = null;
+      try {
+        await this.updateComputedStates();
+        if (typeof this.applyControlLogic === 'function') {
+          await this.applyControlLogic();
+        }
+        await this.renderVis();
+      } catch (e) {
+        this.log.warn('[PH] Folgeprüfung fehlgeschlagen: ' + (e && e.message ? e.message : e));
+      }
+    }, delay);
+
+    if (this.config.debugMode) {
+      this.log.info(`[PH] Folgeprüfung geplant für ${new Date(targetTs).toLocaleString('de-DE')}${reason ? ' | ' + reason : ''}`);
+    }
   }
 
   async getTodayDoseCount(now = new Date()) {
@@ -815,16 +866,16 @@ class Poolsteuerung extends utils.Adapter {
     let count = Number(countState && countState.val) || 0;
     if (!dayKeyState || dayKeyState.val !== today) {
       count = 0;
-      await this.setStateAsync('status.phDose.dayKey', today, true);
-      await this.setStateAsync('status.phDose.dailyCount', 0, true);
+      await this.setOwnStateIfChanged('status.phDose.dayKey', today, true);
+      await this.setOwnStateIfChanged('status.phDose.dailyCount', 0, true);
     }
     return count;
   }
 
   async incrementTodayDoseCount(now = new Date()) {
     const count = await this.getTodayDoseCount(now);
-    await this.setStateAsync('status.phDose.dayKey', this.getTodayKey(now), true);
-    await this.setStateAsync('status.phDose.dailyCount', count + 1, true);
+    await this.setOwnStateIfChanged('status.phDose.dayKey', this.getTodayKey(now), true);
+    await this.setOwnStateIfChanged('status.phDose.dailyCount', count + 1, true);
     return count + 1;
   }
 
@@ -876,7 +927,7 @@ class Poolsteuerung extends utils.Adapter {
     if (this.config.simulateMode) {
       await this.setPhStopAtTs(stopAtTs, 'Start Simulationsmodus');
       await this.setPhDoseHistory(Date.now(), sec);
-      const msg = `[PH] würde dosieren | Prüfzeit ${context.checkTime || '-'} | pH=${context.phValue ?? '-'} | Laufzeit=${sec}s | Stop um ${new Date(stopAtTs).toLocaleTimeString('de-DE')}`;
+      const msg = `[PH] würde dosieren | ${context.reason || ('Prüfzeit ' + (context.checkTime || '-'))} | pH=${context.phValue ?? '-'} | Laufzeit=${sec}s | Stop um ${new Date(stopAtTs).toLocaleTimeString('de-DE')}`;
       await this.setStateAsync('status.debug.lastPhStartInfo', msg, true);
       if (this.config.debugMode) this.log.info(msg);
       return true;
@@ -892,7 +943,7 @@ class Poolsteuerung extends utils.Adapter {
     await this.setPhDoseHistory(Date.now(), sec);
 
 
-    const msg = `[PH] Dosierpumpe EIN | Prüfzeit ${context.checkTime || '-'} | pH=${context.phValue ?? '-'} | Laufzeit=${sec}s | Stop um ${new Date(stopAtTs).toLocaleTimeString('de-DE')}`;
+    const msg = `[PH] Dosierpumpe EIN | ${context.reason || ('Prüfzeit ' + (context.checkTime || '-'))} | pH=${context.phValue ?? '-'} | Laufzeit=${sec}s | Stop um ${new Date(stopAtTs).toLocaleTimeString('de-DE')}`;
     await this.setStateAsync('status.debug.lastPhStartInfo', msg, true);
     if (this.config.debugMode) this.log.info(msg);
 
@@ -947,7 +998,7 @@ class Poolsteuerung extends utils.Adapter {
     }
 
     this.lastPumpScheduleActiveMemory = pumpTarget;
-    await this.setStateAsync('status.debug.lastPumpScheduleActive', pumpTarget, true);
+    await this.setOwnStateIfChanged('status.debug.lastPumpScheduleActive', pumpTarget, true);
 
     const phValue = await this.getNumber(this.config.phStateId, 2);
     const phSet = parseNum(this.config.phSetpoint || 7.2);
@@ -973,40 +1024,67 @@ class Poolsteuerung extends utils.Adapter {
     await this.ensureState('status.phDose.currentPhValue', 'string', 'text', '--', false);
     await this.ensureState('status.phDose.calculatedDoseSec', 'number', 'value.interval', 0, false);
     const lastDoseState = await this.getStateAsync('status.phDose.lastDoseTs');
+    const lastDoseDurationState = await this.getStateAsync('status.phDose.lastDoseDurationSec');
     const lastDoseTs = Number(lastDoseState && lastDoseState.val) || 0;
+    const lastDoseDurationSec = Number(lastDoseDurationState && lastDoseDurationState.val) || 0;
     const nowMs = now.getTime();
-    const lockRemainingMs = Math.max(0, (lastDoseTs + doseLockMinutes * 60000) - nowMs);
+    const nextFollowUpTs = this.getNextPhFollowUpTs(lastDoseTs, lastDoseDurationSec);
+    const lockRemainingMs = Math.max(0, nextFollowUpTs - nowMs);
     const dailyCount = await this.getTodayDoseCount(now);
-    const calcDoseSec = this.calcPhDoseDurationSec(phValue, phSet, phTolerance) || fallbackDoseDurationSec;
-    await this.setOwnStateIfChanged('status.phDose.currentPhValue', phValue === null || !Number.isFinite(phValue) ? '--' : String(phValue), true);
-    await this.setOwnStateIfChanged('status.phDose.calculatedDoseSec', Number(calcDoseSec) || 0, true);
+    const calcDoseSecRaw = this.calcPhDoseDurationSec(phValue, phSet, phTolerance);
+    const calcDoseSec = calcDoseSecRaw > 0 ? calcDoseSecRaw : fallbackDoseDurationSec;
+    const currentPhText = phValue === null || !Number.isFinite(phValue) ? '--' : String(phValue);
+    await this.setOwnStateIfChanged('status.phDose.currentPhValue', currentPhText, true);
+    await this.setOwnStateIfChanged('status.phDose.calculatedDoseSec', Number(calcDoseSecRaw) || 0, true);
     const currentHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const lastDoseToday = lastDoseTs > 0 && this.getTodayKey(new Date(lastDoseTs)) === this.getTodayKey(now);
+    const scheduledDue = this.isPhCheckDue(now);
+    const followUpEnabled = lastDoseToday && dailyCount > 0 && dailyCount < doseMaxPerDay;
+    const followUpDue = followUpEnabled && nextFollowUpTs > 0 && nowMs >= nextFollowUpTs;
+    const evaluationDue = scheduledDue || followUpDue;
+    const evaluationReason = followUpDue ? 'Folgeprüfung nach Sperrzeit' : (scheduledDue ? `Prüfzeit ${currentHHMM}` : 'keine fällige Prüfung');
+
+    if (followUpEnabled && lockRemainingMs > 0) {
+      this.schedulePhRecheck(nextFollowUpTs, 'pH Folgeprüfung nach Dosierung');
+    } else if (!phDoseActive) {
+      this.clearPhRecheckTimer();
+    }
 
     let phDecision = 'keine Prüfung';
     if (!phEnabled) {
+      this.clearPhRecheckTimer();
       phDecision = 'pH Freigabe AUS';
     } else if (!pumpCurrent) {
+      this.clearPhRecheckTimer();
       phDecision = (phPumpCurrent || phDoseActive) ? 'PH-Dosierung gestoppt (Umwälzpumpe AUS)' : 'Pumpe AUS';
-    } else if (!this.isPhCheckDue(now)) {
-      phDecision = `warte auf Prüfzeit (${this.config.phCheckTimes || '-'})`;
     } else if (phValue === null || !Number.isFinite(phValue)) {
       phDecision = 'pH ungültig';
     } else if (dailyCount >= doseMaxPerDay) {
+      this.clearPhRecheckTimer();
       phDecision = `Tageslimit erreicht (${dailyCount}/${doseMaxPerDay})`;
-    } else if (lockRemainingMs > 0) {
-      phDecision = `Sperrzeit aktiv (${Math.ceil(lockRemainingMs / 60000)} min)`;
-    } else if (phValue <= (phSet + phTolerance)) {
-      phDecision = `pH OK (${phValue} <= ${this.fmt(phSet + phTolerance, 2, '--')})`;
-    } else if (phPumpCurrent) {
-      if (!stopAtTs && this.config.debugMode) {
-        // stopAtTs may be held in memory fallback; do not spam logs here.
+    } else if (!evaluationDue) {
+      if (followUpEnabled && nextFollowUpTs > 0) {
+        const whenText = new Date(nextFollowUpTs).toLocaleTimeString('de-DE');
+        phDecision = `Sperrzeit aktiv (${Math.ceil(lockRemainingMs / 60000)} min) | Folgeprüfung um ${whenText}`;
+      } else {
+        phDecision = `warte auf Prüfzeit (${this.config.phCheckTimes || '-'})`;
       }
+    } else if (phValue <= (phSet + phTolerance)) {
+      this.clearPhRecheckTimer();
+      phDecision = `pH OK (${phValue} <= ${this.fmt(phSet + phTolerance, 2, '--')}) | ${evaluationReason}`;
+    } else if (phPumpCurrent) {
       phDecision = stopAtTs ? `Dosierpumpe läuft bis ${new Date(stopAtTs).toLocaleTimeString('de-DE')}` : 'Dosierpumpe läuft bereits';
     } else {
-      const ok = await this.runDosePumpOnce(calcDoseSec, { checkTime: currentHHMM, phValue });
+      const ok = await this.runDosePumpOnce(calcDoseSec, { checkTime: currentHHMM, phValue, reason: evaluationReason });
       if (ok) {
         const newCount = await this.incrementTodayDoseCount(now);
-        phDecision = `${this.config.simulateMode ? 'würde dosieren' : 'dosiert'} ${calcDoseSec}s | pH ${phValue} > ${phSet}+${phTolerance} | Tag ${newCount}/${doseMaxPerDay}`;
+        const newFollowUpTs = this.getNextPhFollowUpTs(nowMs, calcDoseSec);
+        if (newCount < doseMaxPerDay) {
+          this.schedulePhRecheck(newFollowUpTs, 'nächste pH Folgeprüfung');
+        } else {
+          this.clearPhRecheckTimer();
+        }
+        phDecision = `${this.config.simulateMode ? 'würde dosieren' : 'dosiert'} ${calcDoseSec}s | ${evaluationReason} | pH ${phValue} > ${phSet}+${phTolerance} | Tag ${newCount}/${doseMaxPerDay}`;
       } else {
         phDecision = 'Dosierung fehlgeschlagen';
       }
@@ -1014,16 +1092,16 @@ class Poolsteuerung extends utils.Adapter {
 
     await this.ensureState('status.debug.lastPumpDecision', 'string', 'text', '', false);
     await this.ensureState('status.debug.lastPhDecision', 'string', 'text', '', false);
-    await this.setStateAsync('status.debug.lastPumpDecision', pumpDecision, true);
+    await this.setOwnStateIfChanged('status.debug.lastPumpDecision', pumpDecision, true);
     const lastPumpLoggedDecisionState = await this.getStateAsync('status.debug.lastPumpLoggedDecision');
     const lastPumpLoggedDecision = lastPumpLoggedDecisionState && lastPumpLoggedDecisionState.val ? String(lastPumpLoggedDecisionState.val) : '';
     const ownWriteSuppressed = Date.now() < (this.suppressOwnPumpLogUntil || 0);
     const shouldLogPump = !ownWriteSuppressed && (scheduleEdge || pumpDecision !== lastPumpLoggedDecision || pumpDecision.startsWith('Schaltfehler'));
     if (shouldLogPump) {
       this.debug(`Pumpenentscheidung: ${pumpDecision} | zeitfenster=${pumpTarget ? 'aktiv' : 'inaktiv'} | ist=${pumpCurrent ? 'ein' : 'aus'} | edge=${scheduleEdge ? 'ja' : 'nein'}`);
-      await this.setStateAsync('status.debug.lastPumpLoggedDecision', pumpDecision, true);
+      await this.setOwnStateIfChanged('status.debug.lastPumpLoggedDecision', pumpDecision, true);
     }
-    await this.setStateAsync('status.debug.lastPhDecision', phDecision, true);
+    await this.setOwnStateIfChanged('status.debug.lastPhDecision', phDecision, true);
   }
 
 
@@ -1135,13 +1213,23 @@ class Poolsteuerung extends utils.Adapter {
         await this.applyControlLogic();
       }
       await this.renderVis();
+      await this.ensureState('status.phDose.lastDoseTs', 'number', 'value.time', 0, false);
+      await this.ensureState('status.phDose.lastDoseDurationSec', 'number', 'value.interval', 0, false);
+      const lastDoseState = await this.getStateAsync('status.phDose.lastDoseTs');
+      const lastDoseDurationState = await this.getStateAsync('status.phDose.lastDoseDurationSec');
+      const resumeLastDoseTs = Number(lastDoseState && lastDoseState.val) || 0;
+      const resumeLastDoseDurationSec = Number(lastDoseDurationState && lastDoseDurationState.val) || 0;
+      const resumeFollowUpTs = this.getNextPhFollowUpTs(resumeLastDoseTs, resumeLastDoseDurationSec);
+      if (resumeFollowUpTs > Date.now() && this.getTodayKey(new Date(resumeLastDoseTs)) === this.getTodayKey(new Date())) {
+        this.schedulePhRecheck(resumeFollowUpTs, 'wiederhergestellt nach Adapterstart');
+      }
       const pollMin = Math.max(1, Number(this.config.pollIntervalMin) || 1);
       if (this.phStopWatcher) clearInterval(this.phStopWatcher);
-    this.phStopWatcher = setInterval(async () => {
-      await this.enforcePhStopIfDue();
-    }, 1000);
+      this.phStopWatcher = setInterval(async () => {
+        await this.enforcePhStopIfDue();
+      }, 1000);
 
-    this.timer = setInterval(async () => {
+      this.timer = setInterval(async () => {
         try {
           await this.setStateAsync('status.debug.lastCycle', new Date().toISOString(), true);
           await this.updateComputedStates();
@@ -1172,6 +1260,8 @@ class Poolsteuerung extends utils.Adapter {
   async onUnload(callback) {
     try {
       if (this.timer) clearInterval(this.timer);
+      if (this.phStopWatcher) clearInterval(this.phStopWatcher);
+      this.clearPhRecheckTimer();
       await this.setStateAsync('info.connection', false, true);
       callback();
     } catch {
