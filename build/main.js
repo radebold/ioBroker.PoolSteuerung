@@ -661,7 +661,7 @@ class Poolsteuerung extends utils.Adapter {
 </div>`;
   }
 
-  buildPhoneWidget  buildPhoneWidget(data) {
+  buildPhoneWidget(data) {
     const badgeClass = (value, low, high) => {
       const n = parseNum(value);
       if (!Number.isFinite(n)) return 'neutral';
