@@ -876,8 +876,11 @@ class Poolsteuerung extends utils.Adapter {
 
     const chlorOn = pumpOn ? chlorDesired : false;
     let heatDecision = '';
+    const circulationHeartbeatOkDisplay = await this.getHeartbeatOk('status.checks.circulationPump');
     if (!pumpOn) {
       heatDecision = 'Umwälzpumpe AUS';
+    } else if (!circulationHeartbeatOkDisplay) {
+      heatDecision = 'Umwälzpumpe nicht erreichbar';
     } else if (parseNum(feedIn) < threshold) {
       heatDecision = `PV zu gering (${feedIn}W < ${threshold}W)`;
     } else if (parseNum(poolTemp) >= parseNum(targetTemp)) {
@@ -1244,6 +1247,50 @@ class Poolsteuerung extends utils.Adapter {
 
     await this.ensureState('status.debug.lastChlorDecision', 'string', 'text', '', false);
     await this.setStateAsync('status.debug.lastChlorDecision', chlorDecision, true);
+
+    const heatpumpId = this.config.heatpumpPowerStateId;
+    const currentHeat = await this.getBool(heatpumpId);
+    const feedIn = await this.getNumber(this.config.gridFeedInStateId, 0);
+    const poolTemp = await this.getNumber(this.config.waterTempStateId, 1);
+    const targetTemp = parseNum(this.config.heatpumpTargetTemp || 24);
+    const heatThreshold = parseNum(this.config.heatEnableFeedInThresholdW || 1000);
+    let heatReason = 'keine Prüfung';
+    let shouldHeat = currentHeat;
+
+    if (!heatEnabledMaster) {
+      shouldHeat = false;
+      heatReason = currentHeat ? 'Steuerung deaktiviert (bleibt EIN)' : 'Steuerung deaktiviert';
+    } else if (!pumpCurrent) {
+      shouldHeat = false;
+      heatReason = 'Umwälzpumpe AUS';
+    } else if (!circulationHeartbeatOk) {
+      shouldHeat = false;
+      heatReason = 'Umwälzpumpe nicht erreichbar';
+    } else if (feedIn === null || !Number.isFinite(feedIn)) {
+      shouldHeat = false;
+      heatReason = 'Netzeinspeisung ungültig';
+    } else if (poolTemp !== null && Number.isFinite(poolTemp) && Number.isFinite(targetTemp) && poolTemp >= targetTemp) {
+      shouldHeat = false;
+      heatReason = `Solltemp erreicht (${poolTemp}°C >= ${targetTemp}°C)`;
+    } else if (feedIn < heatThreshold) {
+      shouldHeat = false;
+      heatReason = `PV zu gering (${feedIn}W < ${heatThreshold}W)`;
+    } else {
+      shouldHeat = true;
+      heatReason = `PV OK (${feedIn}W >= ${heatThreshold}W)`;
+    }
+
+    if (!this.config.simulateMode && heatpumpId && shouldHeat !== currentHeat) {
+      try {
+        await this.setSwitchStateCompat(heatpumpId, shouldHeat);
+      } catch (e) {
+        heatReason = `WP Schaltfehler: ${e.message || e}`;
+        this.log.warn('Wärmepumpe konnte nicht gesetzt werden: ' + (e.message || e));
+      }
+    }
+
+    await this.ensureState('status.heatpump.lastReason', 'string', 'text', '', false);
+    await this.setStateAsync('status.heatpump.lastReason', heatReason, true);
 
     const phValue = await this.getNumber(this.config.phStateId, 2);
     const phSet = parseNum(this.config.phSetpoint || 7.2);
